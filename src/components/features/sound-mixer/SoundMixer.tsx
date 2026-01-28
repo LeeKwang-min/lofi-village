@@ -1,4 +1,4 @@
-import { Play, Pause, Volume2 } from 'lucide-react'
+import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
 import { useSoundMixer, SoundChannel } from '@/hooks/useSoundMixer'
 
 // 사운드 채널 정의
@@ -7,31 +7,31 @@ import { useSoundMixer, SoundChannel } from '@/hooks/useSoundMixer'
 const SOUND_CHANNELS: SoundChannel[] = [
   {
     id: 'lofi',
-    name: 'Lofi',
+    name: 'Lofi Beat',
     emoji: '🎹',
     src: 'https://cdn.pixabay.com/audio/2024/11/01/audio_febc508c96.mp3'
   },
   {
     id: 'rain',
-    name: 'Rain',
+    name: 'Rain Sounds',
     emoji: '🌧️',
     src: 'https://cdn.pixabay.com/audio/2022/05/31/audio_1c08d20d1a.mp3'
   },
   {
     id: 'fire',
-    name: 'Fire',
+    name: 'Fireplace',
     emoji: '🔥',
     src: 'https://cdn.pixabay.com/audio/2024/06/19/audio_92efdd5219.mp3'
   },
   {
     id: 'cafe',
-    name: 'Cafe',
+    name: 'Cafe Ambience',
     emoji: '☕',
     src: 'https://cdn.pixabay.com/audio/2024/02/14/audio_de23a6eff6.mp3'
   }
 ]
 
-interface SoundChannelCardProps {
+interface SoundTrackItemProps {
   channel: SoundChannel
   isActive: boolean
   volume: number
@@ -40,59 +40,100 @@ interface SoundChannelCardProps {
   onVolumeChange: (volume: number) => void
 }
 
-function SoundChannelCard({
+function SoundTrackItem({
   channel,
   isActive,
   volume,
   isPlaying,
   onToggle,
   onVolumeChange
-}: SoundChannelCardProps) {
+}: SoundTrackItemProps) {
+  const isCurrentlyPlaying = isActive && isPlaying
+
   return (
     <div
-      className={`relative overflow-hidden rounded-xl transition-all duration-200 ${
-        isActive
-          ? 'border-2 border-warm/50 bg-warm/20'
-          : 'border-2 border-transparent bg-background/50 hover:border-surface-hover hover:bg-surface-hover'
+      className={`group flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all duration-200 ${
+        isActive ? 'bg-warm/10' : 'hover:bg-surface-hover/50'
       }`}
     >
-      {/* 클릭 영역 - 토글 */}
-      <button onClick={onToggle} className="flex flex-col gap-1 items-center p-3 pb-2 w-full">
-        <div className="relative">
-          <span className="text-2xl">{channel.emoji}</span>
-          {/* 재생 중 인디케이터 */}
-          {isActive && isPlaying && (
-            <span className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-          )}
-        </div>
-        <span className={`text-xs font-medium ${isActive ? 'text-warm' : 'text-text-secondary'}`}>
-          {channel.name}
-        </span>
-        {/* 활성화 상태 표시 */}
-        <span className={`text-[10px] ${isActive ? 'text-warm/70' : 'text-text-muted'}`}>
-          {isActive ? '믹스에 추가됨' : '클릭하여 추가'}
-        </span>
+      {/* 재생/정지 버튼 */}
+      <button
+        onClick={onToggle}
+        className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full transition-all ${
+          isCurrentlyPlaying
+            ? 'shadow-lg bg-warm text-background shadow-warm/30'
+            : isActive
+              ? 'bg-warm/20 text-warm hover:bg-warm hover:text-background'
+              : 'bg-surface text-text-secondary hover:bg-warm/20 hover:text-warm'
+        }`}
+      >
+        {isCurrentlyPlaying ? (
+          <Pause size={14} fill="currentColor" />
+        ) : (
+          <Play size={14} fill="currentColor" className="ml-0.5" />
+        )}
       </button>
 
-      {/* 볼륨 슬라이더 - 활성화된 경우에만 표시 */}
-      {isActive && (
-        <div className="flex gap-2 items-center px-3 pb-3">
-          <Volume2 size={12} className="flex-shrink-0 text-warm/70" />
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
-            value={volume}
-            onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-            onClick={(e) => e.stopPropagation()}
-            className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-surface [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-warm"
-          />
-          <span className="w-6 text-right text-[10px] text-warm/70">
-            {Math.round(volume * 100)}
+      {/* 트랙 정보 */}
+      <div className="flex flex-1 gap-2 items-center min-w-0">
+        <span className="text-lg">{channel.emoji}</span>
+        <div className="flex flex-col min-w-0">
+          <span
+            className={`truncate text-sm font-medium ${
+              isActive ? 'text-warm' : 'text-text-primary'
+            }`}
+          >
+            {channel.name}
           </span>
+          {isCurrentlyPlaying && (
+            <div className="flex gap-1 items-center">
+              <span className="flex gap-0.5">
+                {[...Array(3)].map((_, i) => (
+                  <span
+                    key={i}
+                    className="w-0.5 animate-pulse rounded-full bg-warm"
+                    style={{
+                      height: `${6 + Math.random() * 6}px`,
+                      animationDelay: `${i * 0.15}s`
+                    }}
+                  />
+                ))}
+              </span>
+              <span className="text-[10px] text-warm/70">재생 중</span>
+            </div>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* 볼륨 컨트롤 - 활성화 또는 호버 시 표시 */}
+      <div
+        className={`flex items-center gap-2 transition-opacity ${
+          isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'
+        }`}
+      >
+        <button
+          onClick={(e) => {
+            e.stopPropagation()
+            onVolumeChange(volume > 0 ? 0 : 0.5)
+          }}
+          className="transition-colors text-text-muted hover:text-warm"
+        >
+          {volume === 0 ? <VolumeX size={14} /> : <Volume2 size={14} />}
+        </button>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.01"
+          value={volume}
+          onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+          onClick={(e) => e.stopPropagation()}
+          className="h-1 w-16 cursor-pointer appearance-none rounded-full bg-surface [&::-webkit-slider-thumb]:h-2.5 [&::-webkit-slider-thumb]:w-2.5 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-warm"
+        />
+        <span className="w-7 text-right text-[10px] tabular-nums text-text-muted">
+          {Math.round(volume * 100)}%
+        </span>
+      </div>
     </div>
   )
 }
@@ -104,23 +145,22 @@ export function SoundMixer() {
   const activeCount = activeSounds.size
 
   return (
-    <section className="p-4 rounded-xl border border-surface-hover/50 bg-surface/50">
-      <div className="flex justify-between items-center mb-3">
+    <section className="flex overflow-hidden flex-col rounded-xl border border-surface-hover/50 bg-surface/50">
+      {/* 헤더 */}
+      <div className="flex justify-between items-center px-4 py-3 border-b border-surface-hover/50">
         <div className="flex gap-2 items-center">
-          <span className="text-xl">🎵</span>
-          <h2 className="text-sm font-semibold text-text-primary">사운드 믹서</h2>
+          <span className="text-lg">🎧</span>
+          <h2 className="text-sm font-semibold text-text-primary">Sound Mixer</h2>
         </div>
-        {activeCount > 0 && (
-          <span className="rounded-full bg-warm/10 px-2 py-0.5 text-xs text-warm">
-            {activeCount}개 활성
-          </span>
-        )}
+        <span className="text-xs text-text-muted">
+          {activeCount > 0 ? `${activeCount}개 선택됨` : '트랙을 선택하세요'}
+        </span>
       </div>
 
-      {/* 사운드 채널 그리드 */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
+      {/* 트랙 목록 */}
+      <div className="flex overflow-y-auto flex-col py-1 max-h-64 custom-scrollbar">
         {SOUND_CHANNELS.map((channel) => (
-          <SoundChannelCard
+          <SoundTrackItem
             key={channel.id}
             channel={channel}
             isActive={isActive(channel.id)}
@@ -132,33 +172,57 @@ export function SoundMixer() {
         ))}
       </div>
 
-      {/* 전역 재생 컨트롤 */}
-      <div className="pt-3 border-t border-surface-hover">
+      {/* 플레이어 컨트롤 바 */}
+      <div className="flex gap-4 justify-between items-center px-4 py-3 border-t border-surface-hover/50 bg-background/30">
+        {/* 재생 상태 표시 */}
+        <div className="flex flex-1 gap-2 items-center min-w-0">
+          {isPlaying && activeCount > 0 ? (
+            <>
+              <div className="flex h-4 items-end gap-0.5">
+                {[...Array(4)].map((_, i) => (
+                  <span
+                    key={i}
+                    className="w-1 rounded-sm animate-bounce bg-warm"
+                    style={{
+                      height: '100%',
+                      animationDelay: `${i * 0.1}s`,
+                      animationDuration: '0.6s'
+                    }}
+                  />
+                ))}
+              </div>
+              <span className="text-xs truncate text-warm">믹스 재생 중...</span>
+            </>
+          ) : (
+            <span className="text-xs text-text-muted">
+              {activeCount === 0 ? '트랙을 선택해주세요' : '재생 대기 중'}
+            </span>
+          )}
+        </div>
+
+        {/* 메인 재생 버튼 */}
         <button
           onClick={togglePlayback}
           disabled={activeCount === 0}
-          className={`flex w-full items-center justify-center gap-2 rounded-lg p-3 font-medium transition-all ${
+          className={`flex h-12 w-12 items-center justify-center rounded-full transition-all ${
             activeCount === 0
               ? 'cursor-not-allowed bg-surface/50 text-text-muted'
               : isPlaying
-                ? 'bg-warm/20 text-warm hover:bg-warm/30'
-                : 'bg-cool/20 text-cool hover:bg-cool/30'
+                ? 'bg-warm text-background shadow-lg shadow-warm/40 hover:scale-105 hover:shadow-warm/60'
+                : 'bg-gradient-to-br from-warm to-warm/80 text-background shadow-lg shadow-warm/30 hover:scale-105 hover:shadow-warm/50'
           }`}
         >
           {isPlaying ? (
-            <>
-              <Pause size={18} />
-              <span className="text-sm">일시정지</span>
-            </>
+            <Pause size={22} fill="currentColor" />
           ) : (
-            <>
-              <Play size={18} />
-              <span className="text-sm">
-                {activeCount === 0 ? '사운드를 추가하세요' : '재생하기'}
-              </span>
-            </>
+            <Play size={22} fill="currentColor" className="ml-1" />
           )}
         </button>
+
+        {/* 트랙 카운트 */}
+        <div className="flex flex-1 gap-1 justify-end items-center min-w-0">
+          <span className="text-xs text-text-muted">{SOUND_CHANNELS.length} tracks</span>
+        </div>
       </div>
     </section>
   )
