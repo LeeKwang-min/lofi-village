@@ -64,6 +64,20 @@ export function Village() {
     setSelectedBuilding(null)
   }
 
+  // 인벤토리 토글 (닫을 때 설치 모드도 취소)
+  const toggleInventory = () => {
+    if (panelMode === 'inventory') {
+      setPanelMode('none')
+      // 인벤토리 닫을 때 설치 모드도 함께 취소
+      if (editMode === 'add') {
+        setEditMode('none')
+        setSelectedBuilding(null)
+      }
+    } else {
+      setPanelMode('inventory')
+    }
+  }
+
   // 삭제 모드 시작
   const startRemoveMode = () => {
     setEditMode('remove')
@@ -256,7 +270,7 @@ export function Village() {
             <span className="text-sm font-medium">상점</span>
           </button>
           <button
-            onClick={() => setPanelMode(panelMode === 'inventory' ? 'none' : 'inventory')}
+            onClick={toggleInventory}
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg p-2 transition-colors ${
               panelMode === 'inventory'
                 ? 'border border-cool/30 bg-cool/20 text-cool'
@@ -280,7 +294,7 @@ export function Village() {
       {editMode === 'add' && (
         <div className="flex gap-2 mb-3">
           <button
-            onClick={() => setPanelMode(panelMode === 'inventory' ? 'none' : 'inventory')}
+            onClick={toggleInventory}
             className={`flex flex-1 items-center justify-center gap-2 rounded-lg p-2 transition-colors ${
               panelMode === 'inventory'
                 ? 'border border-cool/30 bg-cool/20 text-cool'
