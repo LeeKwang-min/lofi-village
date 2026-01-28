@@ -1,0 +1,124 @@
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* ☀️ Cozy Morning Cafe 테마 - 밝고 따뜻한 분위기 */
+    --color-background: 40 30% 96%; /* #f9f6f1 - 크림색 배경 */
+    --color-surface: 40 25% 91%; /* #ebe6dd - 살짝 어두운 베이지 */
+    --color-surface-hover: 40 20% 85%; /* 호버 시 조금 더 어두운 */
+
+    /* 따뜻한 액센트 (테라코타/오렌지) */
+    --color-warm: 24 85% 58%; /* #e87a3d - 테라코타 오렌지 */
+    --color-warm-dim: 24 70% 45%; /* 어두운 warm */
+
+    /* 차분한 액센트 (숲속 그린) */
+    --color-cool: 160 45% 45%; /* #3f9a7e - 부드러운 그린 */
+    --color-cool-dim: 160 40% 35%;
+
+    /* 텍스트 컬러 */
+    --color-text-primary: 30 20% 20%; /* #3d3630 - 진한 브라운 */
+    --color-text-secondary: 30 15% 40%; /* 중간 브라운 */
+    --color-text-muted: 30 10% 55%; /* 연한 브라운 */
+
+    /* 상태 컬러 */
+    --color-success: 145 55% 42%;
+    --color-warning: 40 90% 55%;
+    --color-danger: 0 65% 50%;
+
+    /* 기타 */
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-surface;
+  }
+
+  html {
+    font-family: 'Nunito', -apple-system, BlinkMacSystemFont, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-background text-text-primary;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* 커스텀 스크롤바 */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: hsl(var(--color-surface-hover));
+    border-radius: 3px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--color-text-muted));
+  }
+}
+
+@layer utilities {
+  /* 글로우 효과 */
+  .glow-warm {
+    box-shadow: 0 0 20px hsl(var(--color-warm) / 0.3),
+                0 0 40px hsl(var(--color-warm) / 0.1);
+  }
+
+  .glow-cool {
+    box-shadow: 0 0 20px hsl(var(--color-cool) / 0.3),
+                0 0 40px hsl(var(--color-cool) / 0.1);
+  }
+
+  /* 텍스트 글로우 */
+  .text-glow-warm {
+    text-shadow: 0 0 10px hsl(var(--color-warm) / 0.5);
+  }
+
+  /* 부드러운 페이드 인 애니메이션 */
+  .fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  /* 펄스 애니메이션 (타이머용) */
+  .pulse-warm {
+    animation: pulseWarm 2s ease-in-out infinite;
+  }
+
+  @keyframes pulseWarm {
+    0%, 100% {
+      box-shadow: 0 0 0 0 hsl(var(--color-warm) / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 0 10px hsl(var(--color-warm) / 0);
+    }
+  }
+}
+
+/* 모노스페이스 폰트 (타이머 등) */
+.font-mono {
+  font-family: 'JetBrains Mono', 'SF Mono', Monaco, monospace;
+}
