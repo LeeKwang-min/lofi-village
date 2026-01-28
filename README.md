@@ -60,7 +60,7 @@
 
 ## 📥 다운로드 & 설치
 
-[GitHub Releases](https://github.com/your-username/lofi-village/releases/latest)에서 최신 버전을 다운로드하세요.
+[GitHub Releases](https://github.com/LeeKwang-min/lofi-village/releases/latest)에서 최신 버전을 다운로드하세요.
 
 ### macOS
 
