@@ -2,32 +2,32 @@ import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
 import { useSoundMixer, SoundChannel } from '@/hooks/useSoundMixer'
 
 // 사운드 채널 정의
-// 테스트용 무료 오디오 URL (나중에 로컬 파일로 교체 가능)
-// 출처: Pixabay (무료 상업용 가능)
+// 음원 파일은 public/sounds/ 폴더에 저장
+// 경로 예시: public/sounds/rain.mp3 → '/sounds/rain.mp3'
 const SOUND_CHANNELS: SoundChannel[] = [
   {
     id: 'lofi',
     name: 'Lofi Beat',
     emoji: '🎹',
-    src: 'https://cdn.pixabay.com/audio/2024/11/01/audio_febc508c96.mp3'
+    src: '/sounds/lofi.mp3'
   },
   {
     id: 'rain',
     name: 'Rain Sounds',
     emoji: '🌧️',
-    src: 'https://cdn.pixabay.com/audio/2022/05/31/audio_1c08d20d1a.mp3'
+    src: '/sounds/rain.mp3'
   },
   {
     id: 'fire',
     name: 'Fireplace',
     emoji: '🔥',
-    src: 'https://cdn.pixabay.com/audio/2024/06/19/audio_92efdd5219.mp3'
+    src: '/sounds/fire.mp3'
   },
   {
     id: 'cafe',
     name: 'Cafe Ambience',
     emoji: '☕',
-    src: 'https://cdn.pixabay.com/audio/2024/02/14/audio_de23a6eff6.mp3'
+    src: '/sounds/cafe.mp3'
   }
 ]
 
