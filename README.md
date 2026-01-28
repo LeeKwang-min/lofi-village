@@ -58,7 +58,35 @@
 
 ---
 
-## 🚀 시작하기
+## 📥 다운로드 & 설치
+
+[GitHub Releases](https://github.com/your-username/lofi-village/releases/latest)에서 최신 버전을 다운로드하세요.
+
+### macOS
+
+1. `Lofi Village-x.x.x-arm64.dmg` (Apple Silicon) 또는 `Lofi Village-x.x.x-x64.dmg` (Intel) 다운로드
+2. DMG 파일 열기 → `Lofi Village.app`을 Applications 폴더로 드래그
+3. 처음 실행 시 보안 경고가 나타나면:
+   - `시스템 설정` → `개인정보 보호 및 보안` → `확인 없이 열기` 클릭
+   - 또는 터미널에서: `xattr -cr "/Applications/Lofi Village.app"`
+
+### Windows
+
+1. `Lofi Village Setup x.x.x.exe` 다운로드
+2. 설치 파일 실행
+3. "Windows의 PC 보호" 경고 시: `추가 정보` → `실행` 클릭
+
+### Linux
+
+1. `Lofi Village-x.x.x.AppImage` 다운로드
+2. 실행 권한 부여: `chmod +x Lofi\ Village-x.x.x.AppImage`
+3. 실행: `./Lofi\ Village-x.x.x.AppImage`
+
+> ⚠️ **참고**: 현재 앱은 코드 서명이 되어있지 않아 OS에서 보안 경고가 나타날 수 있습니다. 오픈소스 프로젝트로, 소스 코드를 직접 확인하실 수 있습니다.
+
+---
+
+## 🚀 개발 환경 설정
 
 ### 요구사항
 
@@ -82,8 +110,13 @@ npm run dev
 ### 빌드
 
 ```bash
-# 프로덕션 빌드
+# 프로덕션 빌드 (코드만)
 npm run build
+
+# 배포용 패키지 생성
+npm run build:mac    # macOS (.dmg, .zip)
+npm run build:win    # Windows (.exe)
+npm run build:linux  # Linux (.AppImage, .deb)
 ```
 
 ---
