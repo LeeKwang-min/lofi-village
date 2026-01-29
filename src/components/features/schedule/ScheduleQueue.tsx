@@ -9,7 +9,14 @@
 import { useState } from 'react'
 import { Plus, X, Clock, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { useScheduleContext } from '@/contexts/ScheduleContext'
-import { DEFAULT_PRESETS, calculateBreakMinutes } from '@/types/schedule'
+import { DEFAULT_PRESETS, calculateBreakMinutes, ScheduleItem } from '@/types/schedule'
+
+// 아이템의 이모지를 가져오는 헬퍼 함수
+function getItemEmoji(item: ScheduleItem): string {
+  if (item.emoji) return item.emoji
+  if (item.type === 'break') return '☕'
+  return '🎯' // 기본 집중 이모지
+}
 
 export function ScheduleQueue() {
   const {
@@ -66,25 +73,30 @@ export function ScheduleQueue() {
 
       {isExpanded && (
         <>
-          {/* 프리셋 버튼 */}
-          <div className="flex flex-wrap gap-2 mb-4">
+          {/* 프리셋 버튼 - 그리드 레이아웃 */}
+          <div className="grid grid-cols-4 gap-2 mb-4">
             {DEFAULT_PRESETS.map((preset) => (
               <button
                 key={preset.id}
                 onClick={() => handleAddPreset(preset)}
-                className="flex gap-1 items-center px-3 py-2 text-sm rounded-lg transition-colors bg-background/50 hover:bg-surface-hover text-text-secondary hover:text-text-primary"
+                className="flex flex-col items-center gap-1 p-3 rounded-xl border border-surface-hover/50 bg-background/30 transition-all hover:bg-warm/10 hover:border-warm/30 hover:scale-[1.02] active:scale-[0.98]"
               >
-                <span>{preset.emoji}</span>
-                <span>{preset.name}</span>
-                <span className="text-xs text-text-muted">({preset.focusMinutes}분)</span>
+                <span className="text-xl">{preset.emoji}</span>
+                <span className="text-xs font-medium text-text-primary">{preset.name}</span>
+                <span className="text-[10px] text-text-muted">{preset.focusMinutes}분</span>
               </button>
             ))}
             <button
               onClick={() => setShowCustomForm(!showCustomForm)}
-              className="flex gap-1 items-center px-3 py-2 text-sm rounded-lg transition-colors bg-background/50 hover:bg-surface-hover text-text-secondary hover:text-text-primary"
+              className={`flex flex-col items-center gap-1 p-3 rounded-xl border transition-all hover:scale-[1.02] active:scale-[0.98] ${
+                showCustomForm
+                  ? 'border-cool/50 bg-cool/10'
+                  : 'border-dashed border-surface-hover bg-background/30 hover:bg-cool/10 hover:border-cool/30'
+              }`}
             >
-              <Plus size={14} />
-              <span>커스텀</span>
+              <Plus size={20} className={showCustomForm ? 'text-cool' : 'text-text-muted'} />
+              <span className={`text-xs font-medium ${showCustomForm ? 'text-cool' : 'text-text-secondary'}`}>커스텀</span>
+              <span className="text-[10px] text-text-muted">직접 설정</span>
             </button>
           </div>
 
@@ -137,7 +149,7 @@ export function ScheduleQueue() {
             <div className="mb-3 p-3 rounded-lg border-2 bg-warm/10 border-warm/30">
               <div className="flex justify-between items-center">
                 <div className="flex gap-2 items-center">
-                  <span className="text-lg">{currentItem.type === 'focus' ? '🎯' : '☕'}</span>
+                  <span className="text-lg">{getItemEmoji(currentItem)}</span>
                   <div>
                     <p className="text-sm font-medium text-text-primary">{currentItem.title}</p>
                     <p className="text-xs text-text-muted">
@@ -159,7 +171,7 @@ export function ScheduleQueue() {
                 <div className="flex gap-2 items-center">
                   <Clock size={14} className="text-text-muted" />
                   <span className="text-xs text-text-muted">다음:</span>
-                  <span className="text-sm">{nextItem.type === 'focus' ? '🎯' : '☕'}</span>
+                  <span className="text-sm">{getItemEmoji(nextItem)}</span>
                   <span className="text-sm text-text-secondary">{nextItem.title}</span>
                   <span className="text-xs text-text-muted">({nextItem.durationMinutes}분)</span>
                 </div>
@@ -184,7 +196,7 @@ export function ScheduleQueue() {
                 >
                   <div className="flex gap-2 items-center">
                     <span className="w-5 text-xs text-center text-text-muted">{index + 1}</span>
-                    <span className="text-sm">{item.type === 'focus' ? '🎯' : '☕'}</span>
+                    <span className="text-sm">{getItemEmoji(item)}</span>
                     <span className="text-sm text-text-secondary">{item.title}</span>
                     <span className="text-xs text-text-muted">({item.durationMinutes}분)</span>
                   </div>

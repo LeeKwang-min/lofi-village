@@ -17,6 +17,7 @@ export interface ScheduleItem {
   id: string
   type: ScheduleItemType
   title: string
+  emoji?: string             // 프리셋 이모지
   status: ScheduleItemStatus
   source: ScheduleSource
   durationMinutes: number

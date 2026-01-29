@@ -131,7 +131,8 @@ class ScheduleQueueService {
   addFocusSession(
     title: string,
     durationMinutes: number,
-    autoInsertBreak: boolean = true
+    autoInsertBreak: boolean = true,
+    emoji?: string
   ): ScheduleItem {
     const breakMinutes = calculateBreakMinutes(durationMinutes)
 
@@ -139,6 +140,7 @@ class ScheduleQueueService {
       id: generateId(),
       type: 'focus',
       title,
+      emoji,
       status: 'pending',
       source: 'manual',
       durationMinutes,

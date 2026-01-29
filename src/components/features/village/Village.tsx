@@ -23,6 +23,7 @@ export function Village() {
     purchaseBuilding,
     placeBuilding,
     removeItem,
+    clearAllItems,
     getItemsAt,
     hasPurchased,
     addCoins
@@ -235,21 +236,40 @@ export function Village() {
           </div>
           {/* 삭제 모드: 레이어 토글 버튼 */}
           {editMode === 'remove' && (
-            <div className="flex gap-1 mt-2">
-              {LAYER_TABS.map((tab) => (
+            <div className="flex flex-col gap-2 mt-2">
+              <div className="flex gap-1">
+                {LAYER_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setRemoveLayer(tab.id)}
+                    className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
+                      removeLayer === tab.id
+                        ? 'border border-red-400 bg-red-100 text-red-700'
+                        : 'bg-surface/80 text-text-secondary hover:bg-surface-hover hover:text-text-primary'
+                    }`}
+                  >
+                    <span className="mr-1">{tab.icon}</span>
+                    {tab.name}
+                  </button>
+                ))}
+              </div>
+              {/* 모든 요소 삭제 버튼들 */}
+              <div className="flex gap-2 pt-2 border-t border-red-300">
                 <button
-                  key={tab.id}
-                  onClick={() => setRemoveLayer(tab.id)}
-                  className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
-                    removeLayer === tab.id
-                      ? 'border border-red-500/50 bg-red-500/30 text-red-300'
-                      : 'bg-surface/50 text-text-muted hover:bg-surface-hover hover:text-text-secondary'
-                  }`}
+                  onClick={() => clearAllItems(removeLayer)}
+                  className="flex-1 flex gap-1 items-center justify-center px-2 py-1.5 text-xs font-medium rounded-md transition-colors bg-red-100 text-red-700 border border-red-300 hover:bg-red-200"
                 >
-                  <span className="mr-1">{tab.icon}</span>
-                  {tab.name}
+                  <Trash2 size={12} />
+                  {LAYER_TABS.find(t => t.id === removeLayer)?.name} 전체 삭제
                 </button>
-              ))}
+                <button
+                  onClick={() => clearAllItems()}
+                  className="flex-1 flex gap-1 items-center justify-center px-2 py-1.5 text-xs font-medium rounded-md transition-colors bg-red-500 text-white hover:bg-red-600"
+                >
+                  <Trash2 size={12} />
+                  마을 초기화
+                </button>
+              </div>
             </div>
           )}
         </div>
@@ -326,8 +346,8 @@ export function Village() {
                 onClick={() => setActiveLayer(tab.id)}
                 className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
                   activeLayer === tab.id
-                    ? 'bg-yellow-500/20 text-yellow-400'
-                    : 'bg-surface/50 text-text-muted hover:text-text-secondary'
+                    ? 'bg-amber-100 text-amber-800 border border-amber-400'
+                    : 'bg-surface/80 text-text-secondary hover:text-text-primary hover:bg-surface-hover'
                 }`}
               >
                 <span className="mr-1">{tab.icon}</span>
@@ -336,40 +356,42 @@ export function Village() {
             ))}
           </div>
 
-          {/* 구매 가능한 아이템 목록 */}
-          <div className="grid grid-cols-4 gap-2">
-            {getBuildingsByLayer(activeLayer).map((building) => {
-              const owned = hasPurchased(building.id)
-              const canAfford = coins >= building.cost
+          {/* 구매 가능한 아이템 목록 - 스크롤 영역 */}
+          <div className="max-h-48 overflow-y-auto pr-1">
+            <div className="grid grid-cols-4 gap-2">
+              {getBuildingsByLayer(activeLayer).map((building) => {
+                const owned = hasPurchased(building.id)
+                const canAfford = coins >= building.cost
 
-              return (
-                <button
-                  key={building.id}
-                  onClick={() => !owned && handlePurchase(building)}
-                  disabled={owned || !canAfford}
-                  className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors ${
-                    owned
-                      ? 'opacity-50 cursor-not-allowed bg-surface/30'
-                      : canAfford
-                        ? 'border border-transparent bg-surface-hover hover:border-yellow-500/30 hover:bg-yellow-500/20'
-                        : 'opacity-50 cursor-not-allowed bg-surface/30'
-                  } `}
-                  title={building.description}
-                >
-                  <img
-                    src={building.imagePath}
-                    alt={building.name}
-                    className="object-contain w-8 h-8"
-                  />
-                  <span className="w-full truncate text-center text-[10px] text-text-secondary">
-                    {building.name}
-                  </span>
-                  <span className={`text-[10px] ${owned ? 'text-green-400' : 'text-yellow-400'}`}>
-                    {owned ? '✓ 보유중' : `${building.cost}💰`}
-                  </span>
-                </button>
-              )
-            })}
+                return (
+                  <button
+                    key={building.id}
+                    onClick={() => !owned && handlePurchase(building)}
+                    disabled={owned || !canAfford}
+                    className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors ${
+                      owned
+                        ? 'opacity-50 cursor-not-allowed bg-surface/30'
+                        : canAfford
+                          ? 'border border-transparent bg-surface-hover hover:border-yellow-500/30 hover:bg-yellow-500/20'
+                          : 'opacity-50 cursor-not-allowed bg-surface/30'
+                    } `}
+                    title={building.description}
+                  >
+                    <img
+                      src={building.imagePath}
+                      alt={building.name}
+                      className="object-contain w-8 h-8"
+                    />
+                    <span className="w-full truncate text-center text-[10px] text-text-secondary">
+                      {building.name}
+                    </span>
+                    <span className={`text-[10px] ${owned ? 'text-green-400' : 'text-yellow-400'}`}>
+                      {owned ? '✓ 보유중' : `${building.cost}💰`}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
           </div>
 
           <p className="mt-2 text-center text-[10px] text-text-muted">
@@ -399,8 +421,8 @@ export function Village() {
                   onClick={() => setActiveLayer(tab.id)}
                   className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
                     activeLayer === tab.id
-                      ? 'bg-cool/20 text-cool'
-                      : 'bg-surface/50 text-text-muted hover:text-text-secondary'
+                      ? 'bg-sky-100 text-sky-800 border border-sky-400'
+                      : 'bg-surface/80 text-text-secondary hover:text-text-primary hover:bg-surface-hover'
                   }`}
                 >
                   <span className="mr-1">{tab.icon}</span>
@@ -413,43 +435,45 @@ export function Village() {
             })}
           </div>
 
-          {/* 보유 아이템 목록 */}
-          <div className="grid grid-cols-4 gap-2">
-            {getBuildingsByLayer(activeLayer)
-              .filter((building) => hasPurchased(building.id))
-              .map((building) => {
-                const isSelected = selectedBuilding?.id === building.id && editMode === 'add'
+          {/* 보유 아이템 목록 - 스크롤 영역 */}
+          <div className="max-h-48 overflow-y-auto pr-1">
+            <div className="grid grid-cols-4 gap-2">
+              {getBuildingsByLayer(activeLayer)
+                .filter((building) => hasPurchased(building.id))
+                .map((building) => {
+                  const isSelected = selectedBuilding?.id === building.id && editMode === 'add'
 
-                return (
-                  <button
-                    key={building.id}
-                    onClick={() => handleSelectFromInventory(building)}
-                    className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors ${
-                      isSelected
-                        ? 'border-2 ring-2 border-green-500/50 bg-green-500/20 ring-green-500/30'
-                        : 'border border-transparent bg-surface-hover hover:border-cool/30 hover:bg-cool/20'
-                    } `}
-                    title={building.description}
-                  >
-                    <img
-                      src={building.imagePath}
-                      alt={building.name}
-                      className="object-contain w-8 h-8"
-                    />
-                    <span className="w-full truncate text-center text-[10px] text-text-secondary">
-                      {building.name}
-                    </span>
-                    {isSelected && <span className="text-[10px] text-green-400">선택됨</span>}
-                  </button>
-                )
-              })}
+                  return (
+                    <button
+                      key={building.id}
+                      onClick={() => handleSelectFromInventory(building)}
+                      className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors ${
+                        isSelected
+                          ? 'border-2 ring-2 border-green-500/50 bg-green-500/20 ring-green-500/30'
+                          : 'border border-transparent bg-surface-hover hover:border-cool/30 hover:bg-cool/20'
+                      } `}
+                      title={building.description}
+                    >
+                      <img
+                        src={building.imagePath}
+                        alt={building.name}
+                        className="object-contain w-8 h-8"
+                      />
+                      <span className="w-full truncate text-center text-[10px] text-text-secondary">
+                        {building.name}
+                      </span>
+                      {isSelected && <span className="text-[10px] text-green-400">선택됨</span>}
+                    </button>
+                  )
+                })}
+            </div>
+
+            {getBuildingsByLayer(activeLayer).filter((b) => hasPurchased(b.id)).length === 0 && (
+              <p className="py-4 text-xs text-center text-text-muted">
+                이 카테고리에 보유한 아이템이 없어요
+              </p>
+            )}
           </div>
-
-          {getBuildingsByLayer(activeLayer).filter((b) => hasPurchased(b.id)).length === 0 && (
-            <p className="py-4 text-xs text-center text-text-muted">
-              이 카테고리에 보유한 아이템이 없어요
-            </p>
-          )}
 
           <p className="mt-2 text-center text-[10px] text-text-muted">
             🏗️ 아이템을 선택하고 그리드를 클릭해서 설치하세요

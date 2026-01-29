@@ -34,7 +34,7 @@ interface UseScheduleTimerReturn {
   extendTime: (minutes: number) => void
 
   // 일정 관리
-  addFocusSession: (title: string, durationMinutes: number, autoInsertBreak?: boolean) => void
+  addFocusSession: (title: string, durationMinutes: number, autoInsertBreak?: boolean, emoji?: string) => void
   addPreset: (preset: SchedulePreset) => void
   removeItem: (itemId: string) => void
   clearCompleted: () => void
@@ -202,9 +202,10 @@ export function useScheduleTimer(options: UseScheduleTimerOptions = {}): UseSche
   const addFocusSession = useCallback((
     title: string,
     durationMinutes: number,
-    autoInsertBreak: boolean = true
+    autoInsertBreak: boolean = true,
+    emoji?: string
   ) => {
-    scheduleQueueService.addFocusSession(title, durationMinutes, autoInsertBreak)
+    scheduleQueueService.addFocusSession(title, durationMinutes, autoInsertBreak, emoji)
     syncQueueState()
 
     // 현재 타이머가 비어있으면 새 일정의 시간으로 설정
@@ -217,7 +218,7 @@ export function useScheduleTimer(options: UseScheduleTimerOptions = {}): UseSche
   }, [syncQueueState, currentItem, status])
 
   const addPreset = useCallback((preset: SchedulePreset) => {
-    addFocusSession(preset.name, preset.focusMinutes, true)
+    addFocusSession(preset.name, preset.focusMinutes, true, preset.emoji)
   }, [addFocusSession])
 
   const removeItem = useCallback((itemId: string) => {
