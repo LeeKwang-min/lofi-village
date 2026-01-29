@@ -29,7 +29,11 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2)
 }
 
-export function TaskList() {
+interface TaskListProps {
+  isStandalone?: boolean  // 별도 창에서 사용할 때 true
+}
+
+export function TaskList({ isStandalone = false }: TaskListProps) {
   const [tasks, setTasks] = useState<Task[]>([])
   const [newTaskText, setNewTaskText] = useState('')
 
@@ -87,18 +91,41 @@ export function TaskList() {
   const totalCount = tasks.length
 
   return (
-    <section className="p-4 rounded-xl border border-surface-hover/50 bg-surface/50">
-      <div className="flex justify-between items-center mb-3">
-        <div className="flex gap-2 items-center">
-          <span className="text-xl">📝</span>
-          <h2 className="text-sm font-semibold text-text-primary">오늘 할 일</h2>
+    <section className={`${isStandalone ? 'h-full flex flex-col' : 'p-4 rounded-xl border border-surface-hover/50 bg-surface/50'}`}>
+      {!isStandalone && (
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex gap-2 items-center">
+            <span className="text-xl">📝</span>
+            <h2 className="text-sm font-semibold text-text-primary">오늘 할 일</h2>
+          </div>
+          {totalCount > 0 && (
+            <span className="text-xs text-text-muted">
+              {completedCount}/{totalCount} 완료
+            </span>
+          )}
         </div>
-        {totalCount > 0 && (
-          <span className="text-xs text-text-muted">
+      )}
+
+      {/* 진행률 (standalone 모드) */}
+      {isStandalone && totalCount > 0 && (
+        <div className="mb-4 p-3 rounded-xl border border-cool/20 bg-cool/5">
+          <div className="flex justify-between items-center mb-2">
+            <span className="text-sm font-medium text-text-primary">오늘의 진행률</span>
+            <span className="text-sm text-cool font-bold">
+              {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
+            </span>
+          </div>
+          <div className="h-2 bg-surface rounded-full overflow-hidden">
+            <div
+              className="h-full bg-cool transition-all duration-300"
+              style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-text-muted">
             {completedCount}/{totalCount} 완료
-          </span>
-        )}
-      </div>
+          </p>
+        </div>
+      )}
 
       {/* 할 일 입력 */}
       <div className="flex gap-2 mb-3">
@@ -120,7 +147,7 @@ export function TaskList() {
       </div>
 
       {/* 할 일 목록 */}
-      <div className="overflow-y-auto space-y-2 max-h-48 custom-scrollbar">
+      <div className={`overflow-y-auto space-y-2 custom-scrollbar ${isStandalone ? 'flex-1' : 'max-h-48'}`}>
         {tasks.length === 0 ? (
           <div className="flex gap-2 items-center p-2 rounded-lg bg-background/30">
             <div className="w-4 h-4 rounded-full border-2 border-cool/30" />

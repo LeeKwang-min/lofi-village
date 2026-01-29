@@ -33,8 +33,77 @@ const windowAPI = {
   platform: process.platform
 }
 
+// 알림 관련 API
+interface NotificationAction {
+  id: string
+  label: string
+}
+
+interface ShowNotificationOptions {
+  title: string
+  body: string
+  actions?: NotificationAction[]
+}
+
+interface ShowNotificationResult {
+  success: boolean
+  platform?: string
+  hasActions?: boolean
+  reason?: string
+}
+
+const notificationAPI = {
+  // 알림 지원 여부 확인
+  isSupported: (): Promise<boolean> => {
+    return ipcRenderer.invoke('notification:is-supported')
+  },
+
+  // 알림 표시
+  show: (options: ShowNotificationOptions): Promise<ShowNotificationResult> => {
+    return ipcRenderer.invoke('notification:show', options)
+  },
+
+  // 알림 클릭 이벤트 리스너
+  onClicked: (callback: (data: { action: string }) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, data: { action: string }) => callback(data)
+    ipcRenderer.on('notification:clicked', handler)
+    // cleanup 함수 반환
+    return () => ipcRenderer.removeListener('notification:clicked', handler)
+  },
+
+  // 알림 닫힘 이벤트 리스너
+  onClosed: (callback: () => void): (() => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('notification:closed', handler)
+    return () => ipcRenderer.removeListener('notification:closed', handler)
+  }
+}
+
+// 서브 윈도우 API
+type SubWindowType = 'tasks' | 'history' | 'memo'
+
+const subWindowAPI = {
+  // 서브 윈도우 열기/토글
+  open: (windowType: SubWindowType): Promise<boolean> => {
+    return ipcRenderer.invoke('subwindow:open', windowType)
+  },
+
+  // 서브 윈도우 닫기
+  close: (windowType: SubWindowType): Promise<boolean> => {
+    return ipcRenderer.invoke('subwindow:close', windowType)
+  },
+
+  // 현재 창 닫기 (서브 윈도우 전용)
+  closeSelf: (): void => {
+    ipcRenderer.send('subwindow:close-self')
+  }
+}
+
 // 렌더러에서 window.electronAPI로 접근 가능
 contextBridge.exposeInMainWorld('electronAPI', windowAPI)
+contextBridge.exposeInMainWorld('notificationAPI', notificationAPI)
+contextBridge.exposeInMainWorld('subWindowAPI', subWindowAPI)
 
 // TypeScript 타입 정의를 위한 인터페이스
 export type ElectronAPI = typeof windowAPI
+export type NotificationAPI = typeof notificationAPI

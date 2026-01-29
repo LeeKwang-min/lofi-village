@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Minus, X, Pin, PinOff, AlignLeft, AlignCenter, AlignRight } from 'lucide-react'
+import { Minus, X, Pin, PinOff, AlignLeft, AlignCenter, AlignRight, History } from 'lucide-react'
 
 export function TitleBar() {
   const [isPinned, setIsPinned] = useState(false)
@@ -20,6 +20,10 @@ export function TitleBar() {
   const handleAlign = (position: 'left' | 'right' | 'center') => {
     console.log('handleAlign', position)
     window.electronAPI?.align(position)
+  }
+
+  const handleOpenHistory = () => {
+    window.subWindowAPI?.open('history')
   }
 
   const handleMinimize = () => {
@@ -46,6 +50,15 @@ export function TitleBar() {
         className="flex gap-1 items-center"
         style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}
       >
+        {/* 집중 기록 버튼 */}
+        <button
+          onClick={handleOpenHistory}
+          className="mr-2 rounded-lg p-1.5 bg-background/50 text-text-secondary transition-colors hover:bg-cool/20 hover:text-cool"
+          title="집중 기록"
+        >
+          <History size={14} />
+        </button>
+
         {/* 정렬 버튼들 */}
         <div className="mr-2 flex items-center gap-0.5 rounded-lg bg-background/50 px-1.5 py-1">
           <button

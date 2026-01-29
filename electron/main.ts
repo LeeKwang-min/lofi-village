@@ -1,7 +1,30 @@
-import { app, BrowserWindow, shell, ipcMain, screen } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, screen, Notification } from 'electron'
 import { join } from 'path'
 
+// 알림 옵션 타입 정의
+interface NotificationActionOptions {
+  title: string
+  body: string
+  actions?: Array<{ id: string; label: string }>
+}
+
+// 서브 윈도우 타입 정의
+type SubWindowType = 'tasks' | 'history' | 'memo'
+
+interface SubWindowConfig {
+  title: string
+  width: number
+  height: number
+}
+
+const SUB_WINDOW_CONFIGS: Record<SubWindowType, SubWindowConfig> = {
+  tasks: { title: '오늘의 할 일', width: 400, height: 500 },
+  history: { title: '집중 기록', width: 450, height: 600 },
+  memo: { title: '메모장', width: 400, height: 500 },
+}
+
 let mainWindow: BrowserWindow | null = null
+const subWindows: Map<SubWindowType, BrowserWindow> = new Map()
 
 // 앱의 기본 창 크기 (세로로 긴 레이아웃)
 const WINDOW_WIDTH = 380
@@ -53,6 +76,82 @@ function createWindow(): void {
   }
 }
 
+// 서브 윈도우 생성/토글 함수
+function createOrToggleSubWindow(windowType: SubWindowType): boolean {
+  // 이미 열려있으면 포커스
+  const existingWindow = subWindows.get(windowType)
+  if (existingWindow && !existingWindow.isDestroyed()) {
+    existingWindow.focus()
+    return true
+  }
+
+  const config = SUB_WINDOW_CONFIGS[windowType]
+  const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
+
+  const subWindow = new BrowserWindow({
+    width: config.width,
+    height: config.height,
+    minWidth: 300,
+    minHeight: 400,
+    show: false,
+    frame: false,
+    backgroundColor: '#f9f6f1',
+    resizable: true,
+    autoHideMenuBar: true,
+    titleBarStyle: 'hiddenInset',
+    trafficLightPosition: { x: -100, y: -100 },
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: true,
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  })
+
+  subWindow.on('ready-to-show', () => {
+    // 메인 창 옆에 배치
+    const mainBounds = mainWindow?.getBounds()
+    if (mainBounds) {
+      let x = mainBounds.x - config.width - 10
+      if (x < 0) {
+        x = mainBounds.x + mainBounds.width + 10
+      }
+      if (x + config.width > screenWidth) {
+        x = Math.floor((screenWidth - config.width) / 2)
+      }
+      const y = Math.min(mainBounds.y, screenHeight - config.height)
+      subWindow.setPosition(x, Math.max(0, y))
+    }
+    subWindow.show()
+  })
+
+  subWindow.on('closed', () => {
+    subWindows.delete(windowType)
+  })
+
+  // URL에 쿼리 파라미터 추가하여 어떤 창인지 구분
+  if (process.env['ELECTRON_RENDERER_URL']) {
+    subWindow.loadURL(`${process.env['ELECTRON_RENDERER_URL']}?window=${windowType}`)
+  } else {
+    subWindow.loadFile(join(__dirname, '../renderer/index.html'), {
+      query: { window: windowType }
+    })
+  }
+
+  subWindows.set(windowType, subWindow)
+  return true
+}
+
+// 서브 윈도우 닫기 함수
+function closeSubWindow(windowType: SubWindowType): boolean {
+  const window = subWindows.get(windowType)
+  if (window && !window.isDestroyed()) {
+    window.close()
+    return true
+  }
+  return false
+}
+
 // ============================================
 // IPC 핸들러: Renderer에서 호출할 수 있는 창 제어 함수들
 // ============================================
@@ -101,6 +200,97 @@ ipcMain.on('window:align', (_event, alignTo: 'left' | 'right' | 'center') => {
     mainWindow.setPosition(screenWidth - windowWidth, y);
   } else if (alignTo === 'center') {
     mainWindow.setPosition(Math.floor((screenWidth - windowWidth) / 2), y);
+  }
+})
+
+// ============================================
+// IPC 핸들러: 알림 관련
+// ============================================
+
+// 알림 지원 여부 확인
+ipcMain.handle('notification:is-supported', () => {
+  return Notification.isSupported()
+})
+
+// 알림 표시 (플랫폼별 처리)
+ipcMain.handle('notification:show', (_event, options: NotificationActionOptions) => {
+  if (!Notification.isSupported()) {
+    return { success: false, reason: 'not-supported' }
+  }
+
+  const isMac = process.platform === 'darwin'
+
+  // macOS: 액션 버튼 지원
+  // Windows/Linux: 알림 클릭으로 대체
+  const notificationOptions: Electron.NotificationConstructorOptions = {
+    title: options.title,
+    body: options.body,
+    silent: true, // TTS와 함께 사용하므로 시스템 알림음 끔
+  }
+
+  // macOS에서만 액션 버튼 추가
+  if (isMac && options.actions && options.actions.length > 0) {
+    notificationOptions.actions = options.actions.map(action => ({
+      type: 'button' as const,
+      text: action.label
+    }))
+    // macOS에서 액션 버튼을 표시하려면 hasReply나 actions가 있어야 함
+    notificationOptions.hasReply = false
+  }
+
+  const notification = new Notification(notificationOptions)
+
+  // 알림 클릭 시 앱 창 포커스 + renderer에 이벤트 전달
+  notification.on('click', () => {
+    mainWindow?.show()
+    mainWindow?.focus()
+    mainWindow?.webContents.send('notification:clicked', { action: 'click' })
+  })
+
+  // macOS 액션 버튼 클릭 처리
+  if (isMac) {
+    notification.on('action', (_event, index) => {
+      const actionId = options.actions?.[index]?.id || `action-${index}`
+      mainWindow?.show()
+      mainWindow?.focus()
+      mainWindow?.webContents.send('notification:clicked', { action: actionId })
+    })
+  }
+
+  // 알림 닫힘 처리
+  notification.on('close', () => {
+    mainWindow?.webContents.send('notification:closed')
+  })
+
+  notification.show()
+
+  return {
+    success: true,
+    platform: process.platform,
+    hasActions: isMac && (options.actions?.length || 0) > 0
+  }
+})
+
+// ============================================
+// IPC 핸들러: 서브 윈도우 관련
+// ============================================
+
+// 서브 윈도우 열기/토글
+ipcMain.handle('subwindow:open', (_event, windowType: SubWindowType) => {
+  return createOrToggleSubWindow(windowType)
+})
+
+// 서브 윈도우 닫기
+ipcMain.handle('subwindow:close', (_event, windowType: SubWindowType) => {
+  return closeSubWindow(windowType)
+})
+
+// 현재 창이 서브 윈도우인지 확인 (서브 윈도우에서 자신을 닫을 때 사용)
+ipcMain.on('subwindow:close-self', (event) => {
+  const webContents = event.sender
+  const window = BrowserWindow.fromWebContents(webContents)
+  if (window && window !== mainWindow) {
+    window.close()
   }
 })
 

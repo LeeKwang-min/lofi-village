@@ -1,105 +1,125 @@
-import { Play, Pause, RotateCcw, SkipForward, Coins } from 'lucide-react'
-import { useTimer, formatTime } from '@/hooks/useTimer'
-import { useVillageContext } from '@/contexts/VillageContext'
-import { useNotification } from '@/hooks/useNotification'
+/**
+ * 스케줄 타이머 컴포넌트
+ * 기존 PomodoroTimer UI를 기반으로 동적 시간 및 일정 연동 지원
+ */
+
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { Play, Pause, RotateCcw, SkipForward, Coins } from 'lucide-react'
+import { useScheduleContext } from '@/contexts/ScheduleContext'
+import { useNotification } from '@/hooks/useNotification'
+import { formatTime } from '@/hooks/useTimer'
 
-const FOCUS_REWARD = 50 // 집중 완료 시 보상 코인
+const FOCUS_REWARD_PER_30MIN = 25
 
-export function PomodoroTimer() {
-  const { addCoins, addFocusTime } = useVillageContext()
+export function ScheduleTimer() {
+  const {
+    timeLeft,
+    status,
+    progress,
+    currentItem,
+    nextItem,
+    start,
+    pause,
+    reset,
+    skip,
+    extendTime,
+  } = useScheduleContext()
+
   const [showReward, setShowReward] = useState(false)
+  const [lastReward, setLastReward] = useState(0)
   const [pendingNotification, setPendingNotification] = useState<'focus' | 'break' | null>(null)
 
-  const { timeLeft, status, mode, progress, start, pause, reset, skip, extendTime } = useTimer({
-    focusMinutes: 60,
-    breakMinutes: 10,
-    onComplete: (completedMode) => {
-      if (completedMode === 'focus') {
-        addCoins(FOCUS_REWARD)
-        addFocusTime(25)
-        setShowReward(true)
-        setTimeout(() => setShowReward(false), 2000)
-      }
-      // 알림은 useEffect에서 처리 (순환 참조 방지)
-      setPendingNotification(completedMode)
-    }
-  })
+  // 현재 모드 결정 (currentItem 또는 nextItem 기준)
+  const activeItem = currentItem || nextItem
+  const isFocus = activeItem ? activeItem.type === 'focus' : true
+  const isRunning = status === 'running'
 
-  // 타이머 함수와 상태를 ref로 저장 (액션 핸들러에서 최신 값 사용)
-  const timerActionsRef = useRef({ start, skip, extendTime, mode })
-  timerActionsRef.current = { start, skip, extendTime, mode }
+  // 타이머 함수 ref (알림 액션 핸들러용)
+  const timerActionsRef = useRef({ start, skip, extendTime, isFocus })
+  timerActionsRef.current = { start, skip, extendTime, isFocus }
 
   // 알림 액션 핸들러
   const handleNotificationAction = useCallback((actionId: string) => {
-    const { start, skip, extendTime, mode } = timerActionsRef.current
+    const { start, skip, extendTime, isFocus } = timerActionsRef.current
 
     switch (actionId) {
       case 'start-break':
-        if (mode === 'focus') {
-          skip()
-          // skip() 후 상태 업데이트를 기다린 후 start()
-          setTimeout(() => timerActionsRef.current.start(), 50)
-        }
+        // 휴식 시작 (다음 일정이 휴식이면 시작)
+        start()
         break
       case 'extend-focus':
-        // 집중 완료 후 mode가 이미 'break'로 전환됨 → 다시 'focus'로 돌아가서 연장
-        if (mode === 'break') {
-          skip()
-          setTimeout(() => {
-            timerActionsRef.current.extendTime(5)
-            timerActionsRef.current.start()
-          }, 50)
-        }
+        // 5분 연장하고 다시 시작
+        extendTime(5)
+        start()
         break
       case 'start-focus':
-        if (mode === 'break') {
-          skip()
-          setTimeout(() => timerActionsRef.current.start(), 50)
-        }
+        // 집중 시작 (다음 일정이 집중이면 시작)
+        start()
         break
       case 'snooze':
-        // 휴식 완료 후 mode가 이미 'focus'로 전환됨 → 다시 'break'로 돌아가서 연장
-        if (mode === 'focus') {
-          skip()
-          setTimeout(() => {
-            timerActionsRef.current.extendTime(5)
-            timerActionsRef.current.start()
-          }, 50)
-        }
+        // 5분 더 쉬기
+        extendTime(5)
+        start()
         break
       case 'click':
-        // 알림 클릭 시 앱 포커스는 main.ts에서 처리됨
-        // 추가 동작이 필요하면 여기에 구현
+        // 알림 클릭 - 앱 포커스
         break
     }
   }, [])
 
-  const { notifyFocusComplete, notifyBreakComplete, ActionId } = useNotification({
-    onAction: handleNotificationAction
+  const { notifyFocusComplete, notifyBreakComplete } = useNotification({
+    onAction: handleNotificationAction,
   })
+
+  // 완료 감지 및 보상 표시
+  useEffect(() => {
+    if (timeLeft === 0 && status === 'idle' && currentItem === null && activeItem) {
+      // 일정이 완료됨
+      if (!isFocus) {
+        // 이전 아이템이 집중이었다면 (지금 break로 전환된 상태)
+        setPendingNotification('focus')
+      } else {
+        setPendingNotification('break')
+      }
+    }
+  }, [timeLeft, status, currentItem, activeItem, isFocus])
 
   // 보류된 알림 처리
   useEffect(() => {
     if (pendingNotification === 'focus') {
       notifyFocusComplete()
+      // 보상 애니메이션 표시
+      if (activeItem) {
+        const reward = Math.floor((activeItem.durationMinutes / 30) * FOCUS_REWARD_PER_30MIN)
+        setLastReward(reward)
+        setShowReward(true)
+        setTimeout(() => setShowReward(false), 2000)
+      }
     } else if (pendingNotification === 'break') {
       notifyBreakComplete()
     }
     setPendingNotification(null)
-  }, [pendingNotification, notifyFocusComplete, notifyBreakComplete])
+  }, [pendingNotification, notifyFocusComplete, notifyBreakComplete, activeItem])
 
-  const isRunning = status === 'running'
-  const isFocus = mode === 'focus'
+  // 타이틀 결정
+  const title = activeItem?.title || (isFocus ? '집중 타이머' : '휴식 시간')
+  const subtitle = currentItem
+    ? `${currentItem.durationMinutes}분 ${isFocus ? '집중' : '휴식'}`
+    : nextItem
+      ? `다음: ${nextItem.title} (${nextItem.durationMinutes}분)`
+      : null
 
   return (
     <section className="p-4 rounded-xl border border-surface-hover/50 bg-surface/50">
       <div className="flex justify-between items-center mb-4">
         <div className="flex gap-2 items-center">
           <span className="text-xl">{isFocus ? '🎯' : '☕'}</span>
-          <h2 className="text-sm font-semibold text-text-primary">
-            {isFocus ? '집중 타이머' : '휴식 시간'}
-          </h2>
+          <div>
+            <h2 className="text-sm font-semibold text-text-primary">{title}</h2>
+            {subtitle && (
+              <p className="text-xs text-text-muted">{subtitle}</p>
+            )}
+          </div>
         </div>
         <span
           className={`rounded-full px-2 py-1 text-xs ${
@@ -148,7 +168,8 @@ export function PomodoroTimer() {
             {formatTime(timeLeft)}
           </span>
           <span className="mt-1 text-xs text-text-muted">
-            {status === 'idle' && '시작하려면 버튼을 누르세요'}
+            {status === 'idle' && !currentItem && !nextItem && '일정을 추가하세요'}
+            {status === 'idle' && (currentItem || nextItem) && '시작하려면 버튼을 누르세요'}
             {status === 'running' && (isFocus ? '집중하는 중...' : '쉬는 중...')}
             {status === 'paused' && '일시정지됨'}
           </span>
@@ -159,7 +180,7 @@ export function PomodoroTimer() {
       {showReward && (
         <div className="flex gap-2 justify-center items-center p-2 mb-4 text-yellow-500 rounded-lg animate-pulse bg-yellow-500/20">
           <Coins size={16} />
-          <span className="text-sm font-medium">+{FOCUS_REWARD} 코인 획득!</span>
+          <span className="text-sm font-medium">+{lastReward} 코인 획득!</span>
         </div>
       )}
 
@@ -177,11 +198,14 @@ export function PomodoroTimer() {
         {/* 시작/일시정지 버튼 */}
         <button
           onClick={isRunning ? pause : start}
+          disabled={!currentItem && !nextItem}
           className={`rounded-full p-4 font-medium transition-all ${
             isFocus
               ? 'bg-warm/20 text-warm hover:bg-warm/30'
               : 'bg-cool/20 text-cool hover:bg-cool/30'
-          } ${isRunning ? 'pulse-warm' : ''}`}
+          } ${isRunning ? 'pulse-warm' : ''} ${
+            !currentItem && !nextItem ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
           title={isRunning ? '일시정지' : '시작'}
         >
           {isRunning ? <Pause size={24} /> : <Play size={24} />}
@@ -190,7 +214,10 @@ export function PomodoroTimer() {
         {/* 스킵 버튼 */}
         <button
           onClick={skip}
-          className="p-3 rounded-full transition-colors bg-background/50 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+          disabled={!currentItem && !nextItem}
+          className={`p-3 rounded-full transition-colors bg-background/50 text-text-secondary hover:bg-surface-hover hover:text-text-primary ${
+            !currentItem && !nextItem ? 'opacity-50 cursor-not-allowed' : ''
+          }`}
           title="스킵"
         >
           <SkipForward size={18} />

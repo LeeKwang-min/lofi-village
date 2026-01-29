@@ -18,6 +18,7 @@ interface UseTimerReturn {
   pause: () => void
   reset: () => void
   skip: () => void
+  extendTime: (minutes: number) => void // 시간 연장
 }
 
 export function useTimer(options: UseTimerOptions = {}): UseTimerReturn {
@@ -53,19 +54,10 @@ export function useTimer(options: UseTimerOptions = {}): UseTimerReturn {
     }
   }, [])
 
-  // TODO(human): 타이머 tick 로직 구현
-  // 이 함수는 1초마다 호출되어 timeLeft를 1씩 감소시킵니다.
-  // timeLeft가 0이 되면:
-  // 1. 타이머를 정리 (clearTimer 호출)
-  // 2. onCompleteRef.current 콜백 호출 (존재하면)
-  // 3. 모드 전환 (focus → break, break → focus)
-  // 4. 새 모드의 시간으로 timeLeft 설정
-  // 5. status를 'idle'로 변경
+  // 타이머 tick: 1초마다 호출되어 시간을 감소시킴
   const tick = useCallback(() => {
     setTimeLeft((prev) => {
       if (prev <= 1) {
-        // 여기에 타이머 완료 로직을 구현하세요
-        // 힌트: clearTimer(), onCompleteRef.current?.(mode), setMode(), setStatus()
         setTimeout(() => {
           clearTimer()
           onCompleteRef.current?.(mode)
@@ -113,6 +105,11 @@ export function useTimer(options: UseTimerOptions = {}): UseTimerReturn {
     setStatus('idle')
   }, [clearTimer, mode, focusMinutes, breakMinutes])
 
+  // 시간 연장 (분 단위)
+  const extendTime = useCallback((minutes: number) => {
+    setTimeLeft(prev => prev + minutes * 60)
+  }, [])
+
   // 컴포넌트 언마운트 시 타이머 정리
   useEffect(() => {
     return () => clearTimer()
@@ -126,7 +123,8 @@ export function useTimer(options: UseTimerOptions = {}): UseTimerReturn {
     start,
     pause,
     reset,
-    skip
+    skip,
+    extendTime
   }
 }
 
