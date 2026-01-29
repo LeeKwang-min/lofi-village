@@ -257,14 +257,14 @@ export function Village() {
               <div className="flex gap-2 pt-2 border-t border-red-300">
                 <button
                   onClick={() => clearAllItems(removeLayer)}
-                  className="flex-1 flex gap-1 items-center justify-center px-2 py-1.5 text-xs font-medium rounded-md transition-colors bg-red-100 text-red-700 border border-red-300 hover:bg-red-200"
+                  className="flex flex-1 items-center justify-center gap-1 rounded-md border border-red-300 bg-red-100 px-2 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-200"
                 >
                   <Trash2 size={12} />
-                  {LAYER_TABS.find(t => t.id === removeLayer)?.name} 전체 삭제
+                  {LAYER_TABS.find((t) => t.id === removeLayer)?.name} 전체 삭제
                 </button>
                 <button
                   onClick={() => clearAllItems()}
-                  className="flex-1 flex gap-1 items-center justify-center px-2 py-1.5 text-xs font-medium rounded-md transition-colors bg-red-500 text-white hover:bg-red-600"
+                  className="flex flex-1 items-center justify-center gap-1 rounded-md bg-red-500 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600"
                 >
                   <Trash2 size={12} />
                   마을 초기화
@@ -346,8 +346,8 @@ export function Village() {
                 onClick={() => setActiveLayer(tab.id)}
                 className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
                   activeLayer === tab.id
-                    ? 'bg-amber-100 text-amber-800 border border-amber-400'
-                    : 'bg-surface/80 text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                    ? 'border border-amber-400 bg-amber-100 text-amber-800'
+                    : 'bg-surface/80 text-text-secondary hover:bg-surface-hover hover:text-text-primary'
                 }`}
               >
                 <span className="mr-1">{tab.icon}</span>
@@ -357,7 +357,7 @@ export function Village() {
           </div>
 
           {/* 구매 가능한 아이템 목록 - 스크롤 영역 */}
-          <div className="max-h-48 overflow-y-auto pr-1">
+          <div className="overflow-y-auto pr-1 max-h-48">
             <div className="grid grid-cols-4 gap-2">
               {getBuildingsByLayer(activeLayer).map((building) => {
                 const owned = hasPurchased(building.id)
@@ -385,7 +385,7 @@ export function Village() {
                     <span className="w-full truncate text-center text-[10px] text-text-secondary">
                       {building.name}
                     </span>
-                    <span className={`text-[10px] ${owned ? 'text-green-400' : 'text-yellow-400'}`}>
+                    <span className={`text-gray-800 text-[10px]`}>
                       {owned ? '✓ 보유중' : `${building.cost}💰`}
                     </span>
                   </button>
@@ -421,8 +421,8 @@ export function Village() {
                   onClick={() => setActiveLayer(tab.id)}
                   className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition-colors ${
                     activeLayer === tab.id
-                      ? 'bg-sky-100 text-sky-800 border border-sky-400'
-                      : 'bg-surface/80 text-text-secondary hover:text-text-primary hover:bg-surface-hover'
+                      ? 'border border-sky-400 bg-sky-100 text-sky-800'
+                      : 'bg-surface/80 text-text-secondary hover:bg-surface-hover hover:text-text-primary'
                   }`}
                 >
                   <span className="mr-1">{tab.icon}</span>
@@ -436,7 +436,7 @@ export function Village() {
           </div>
 
           {/* 보유 아이템 목록 - 스크롤 영역 */}
-          <div className="max-h-48 overflow-y-auto pr-1">
+          <div className="overflow-y-auto pr-1 max-h-48">
             <div className="grid grid-cols-4 gap-2">
               {getBuildingsByLayer(activeLayer)
                 .filter((building) => hasPurchased(building.id))

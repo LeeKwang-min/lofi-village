@@ -1,95 +1,12 @@
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
-import { useSoundMixer, SoundChannel } from '@/hooks/useSoundMixer'
-
-// 사운드 채널 정의
-// 음원 파일은 public/sounds/ 폴더에 저장
-// 경로 예시: public/sounds/rain.mp3 → '/sounds/rain.mp3'
-
-// 🎹 Lofi Beats - 음악 트랙
-const LOFI_CHANNELS: SoundChannel[] = [
-  { id: 'lofi1', name: 'Lofi Beat 1', emoji: '🎹', src: './sounds/lofi1.mp3' },
-  { id: 'lofi2', name: 'Lofi Beat 2', emoji: '🎵', src: './sounds/lofi2.mp3' },
-  { id: 'lofi3', name: 'Lofi Beat 3', emoji: '🎶', src: './sounds/lofi3.mp3' },
-]
-
-// 🌿 Ambient Sounds - 화이트 노이즈 (그룹별)
-interface SoundGroup {
-  id: string
-  name: string
-  emoji: string
-  channels: SoundChannel[]
-}
-
-const AMBIENT_GROUPS: SoundGroup[] = [
-  {
-    id: 'rain',
-    name: 'Rain',
-    emoji: '🌧️',
-    channels: [
-      { id: 'rain1', name: 'Soft Rain', emoji: '🌧️', src: './sounds/rain1.mp3' },
-      { id: 'rain2', name: 'Heavy Rain', emoji: '⛈️', src: './sounds/rain2.mp3' },
-      { id: 'rain3', name: 'Rain Drops', emoji: '💧', src: './sounds/rain3.mp3' },
-    ]
-  },
-  {
-    id: 'cafe',
-    name: 'Cafe',
-    emoji: '☕',
-    channels: [
-      { id: 'cafe1', name: 'Cafe Ambience 1', emoji: '☕', src: './sounds/cafe1.mp3' },
-      { id: 'cafe2', name: 'Cafe Ambience 2', emoji: '🍵', src: './sounds/cafe2.mp3' },
-      { id: 'cafe3', name: 'Cafe Chatter', emoji: '👥', src: './sounds/cafe3.mp3' },
-      { id: 'cafe4', name: 'Coffee Shop', emoji: '🏪', src: './sounds/cafe4.mp3' },
-    ]
-  },
-  {
-    id: 'fire',
-    name: 'Fire',
-    emoji: '🔥',
-    channels: [
-      { id: 'fire1', name: 'Fireplace', emoji: '🔥', src: './sounds/fire1.mp3' },
-      { id: 'fire2', name: 'Campfire', emoji: '🏕️', src: './sounds/fire2.mp3' },
-    ]
-  },
-  {
-    id: 'forest',
-    name: 'Forest',
-    emoji: '🌲',
-    channels: [
-      { id: 'forest1', name: 'Forest Birds', emoji: '🌲', src: './sounds/forest1.mp3' },
-      { id: 'forest2', name: 'Forest Ambience', emoji: '🌳', src: './sounds/forest2.mp3' },
-      { id: 'forest3', name: 'Forest Night', emoji: '🦉', src: './sounds/forest3.mp3' },
-    ]
-  },
-  {
-    id: 'water',
-    name: 'Water',
-    emoji: '💦',
-    channels: [
-      { id: 'water1', name: 'Stream', emoji: '💦', src: './sounds/water1.mp3' },
-      { id: 'water2', name: 'River', emoji: '🏞️', src: './sounds/water2.mp3' },
-      { id: 'water3', name: 'Waterfall', emoji: '🌊', src: './sounds/water3.mp3' },
-      { id: 'water4', name: 'Ocean Waves', emoji: '🐚', src: './sounds/water4.mp3' },
-    ]
-  },
-  {
-    id: 'wind',
-    name: 'Wind',
-    emoji: '🌬️',
-    channels: [
-      { id: 'wind1', name: 'Gentle Breeze', emoji: '🌬️', src: './sounds/wind1.mp3' },
-      { id: 'wind2', name: 'Wind Chimes', emoji: '🎐', src: './sounds/wind2.mp3' },
-      { id: 'wind3', name: 'Strong Wind', emoji: '💨', src: './sounds/wind3.mp3' },
-      { id: 'wind4', name: 'Howling Wind', emoji: '🍃', src: './sounds/wind4.mp3' },
-    ]
-  },
-]
-
-// 모든 Ambient 채널 (flat)
-const AMBIENT_CHANNELS: SoundChannel[] = AMBIENT_GROUPS.flatMap(g => g.channels)
-
-// 전체 채널 (useSoundMixer에 전달용)
-const ALL_CHANNELS: SoundChannel[] = [...LOFI_CHANNELS, ...AMBIENT_CHANNELS]
+import {
+  useSoundContext,
+  SoundChannel,
+  LOFI_CHANNELS,
+  AMBIENT_GROUPS,
+  AMBIENT_CHANNELS,
+  ALL_CHANNELS,
+} from '@/contexts/SoundContext'
 
 interface SoundTrackItemProps {
   channel: SoundChannel
@@ -200,7 +117,7 @@ function SoundTrackItem({
 
 export function SoundMixer() {
   const { activeSounds, volumes, isPlaying, toggleSound, setVolume, togglePlayback, isActive } =
-    useSoundMixer(ALL_CHANNELS)
+    useSoundContext()
 
   const activeCount = activeSounds.size
 

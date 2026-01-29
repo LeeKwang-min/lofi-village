@@ -14,21 +14,24 @@
 - 개별 볼륨 조절 및 믹싱
 - 원클릭 재생/정지
 
-### ⏱️ 포모도로 타이머
+### 📋 일정 큐 & 동적 타이머
 
-집중과 휴식 사이클을 관리하세요.
+유연한 집중/휴식 사이클을 관리하세요.
 
-- 60분 집중 / 10분 휴식 사이클
-- 시각적 프로그레스 링
-- 세션 완료 시 코인 보상
+- ⚡ 짧은 집중 (30분), 🎯 표준 (60분), 🔥 딥 워크 (120분) 프리셋
+- 커스텀 시간 설정 (5분 ~ 240분)
+- 자동 휴식 삽입 (집중 시간의 1/6 비율)
+- 연속 일정 관리 및 스킵 기능
+- 세션 완료 시 코인 보상 & 알림
 
 ### 🏘️ 마을 꾸미기
 
 집중한 시간만큼 코인을 모아 마을을 성장시키세요.
 
-- 타일, 자연물, 건물, 유닛 배치
-- 레이어 기반 맵 시스템
-- 다양한 중세 테마 에셋
+- **126개의 중세 테마 에셋** (타일 58개, 자연물 21개, 건물 23개, 유닛 24개)
+- 레이어 기반 맵 시스템 (타일 → 자연물 → 건물 → 유닛)
+- 상점에서 구매 → 인벤토리에서 배치
+- 전체 삭제 및 마을 초기화 기능
 
 ### 🥠 포츈 쿠키
 
@@ -42,9 +45,9 @@
 
 ## 📸 스크린샷
 
-|                    사운드 믹서                     |                    타이머                    |                       마을                       |
-| :------------------------------------------------: | :------------------------------------------: | :----------------------------------------------: |
-| ![Sound Mixer](./docs/images/screenshot-mixer.png) | ![Timer](./docs/images/screenshot-timer.png) | ![Village](./docs/images/screenshot-village.png) |
+|                    사운드 믹서                     |                    타이머                    |                       마을                       |                    추가 기능                     |
+| :------------------------------------------------: | :------------------------------------------: | :----------------------------------------------: | :----------------------------------------------: |
+| ![Sound Mixer](./docs/images/screenshot-mixer.png) | ![Timer](./docs/images/screenshot-timer.png) | ![Village](./docs/images/screenshot-village.png) | ![Village](./docs/images/screenshot-submain.png) |
 
 ---
 
@@ -55,6 +58,7 @@
 - **Styling**: [Tailwind CSS](https://tailwindcss.com/)
 - **Language**: TypeScript
 - **Icons**: [Lucide React](https://lucide.dev/)
+- **Font**: [네오둥근모 프로](https://neodgm.dalgona.dev/) (레트로 픽셀 폰트)
 
 ---
 
@@ -125,18 +129,27 @@ npm run build:linux  # Linux (.AppImage, .deb)
 
 ```
 lofi-village/
-├── electron/           # Electron 메인/프리로드 프로세스
+├── electron/              # Electron 메인/프리로드 프로세스
 │   ├── main.ts
 │   └── preload.ts
 ├── src/
-│   ├── components/     # React 컴포넌트
-│   │   ├── features/   # 기능별 컴포넌트
-│   │   └── layout/     # 레이아웃 컴포넌트
-│   ├── contexts/       # React Context
-│   ├── hooks/          # 커스텀 훅
-│   └── index.css       # 전역 스타일 & 테마
+│   ├── components/        # React 컴포넌트
+│   │   ├── features/      # 기능별 컴포넌트
+│   │   │   ├── schedule/  # 일정 큐 & 타이머
+│   │   │   ├── village/   # 마을 꾸미기
+│   │   │   └── ...
+│   │   └── layout/        # 레이아웃 컴포넌트
+│   ├── config/            # 설정 파일
+│   │   └── villageAssets.ts  # 126개 마을 에셋 정의
+│   ├── contexts/          # React Context
+│   ├── hooks/             # 커스텀 훅
+│   ├── services/          # 서비스 (알림, 일정 큐 등)
+│   ├── types/             # TypeScript 타입 정의
+│   └── index.css          # 전역 스타일 & 테마
 ├── public/
-│   └── map/            # 마을 타일맵 에셋
+│   ├── fonts/             # 커스텀 폰트 (네오둥근모)
+│   ├── map/               # 마을 타일맵 에셋
+│   └── sounds/            # 사운드 파일
 └── package.json
 ```
 
@@ -162,6 +175,7 @@ MIT License
 
 - 사운드: [Pixabay](https://pixabay.com/) (무료 상업용 라이선스)
 - 타일맵 에셋: [Kenney](https://www.kenney.nl/) CC0 라이선스
+- 폰트: [네오둥근모 프로](https://neodgm.dalgona.dev/) by Dalgona (OFL 라이선스)
 
 ---
 

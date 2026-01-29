@@ -11,6 +11,7 @@ import { QuickActions } from './components/features/quick-actions'
 import { Memo } from './components/features/memo'
 import { VillageProvider } from './contexts/VillageContext'
 import { ScheduleProvider } from './contexts/ScheduleContext'
+import { SoundProvider } from './contexts/SoundContext'
 
 // URL 쿼리 파라미터에서 창 타입 가져오기
 function getWindowType(): 'main' | 'tasks' | 'history' | 'memo' {
@@ -72,13 +73,15 @@ function MainApp() {
   ]
 
   return (
-    <VillageProvider>
-      <ScheduleProvider>
-        <AppShell>
-          <TabLayout tabs={tabs} />
-        </AppShell>
-      </ScheduleProvider>
-    </VillageProvider>
+    <SoundProvider>
+      <VillageProvider>
+        <ScheduleProvider>
+          <AppShell>
+            <TabLayout tabs={tabs} />
+          </AppShell>
+        </ScheduleProvider>
+      </VillageProvider>
+    </SoundProvider>
   )
 }
 
