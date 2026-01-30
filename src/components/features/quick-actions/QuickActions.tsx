@@ -16,18 +16,13 @@ export function QuickActions() {
 
   return (
     <section className="p-4 rounded-xl border border-surface-hover/50 bg-surface/50">
-      <div className="flex gap-2 items-center mb-3">
-        <span className="text-xl">🚀</span>
-        <h2 className="text-sm font-semibold text-text-primary">빠른 실행</h2>
-      </div>
-
       <div className="grid grid-cols-2 gap-3">
         {/* 오늘의 할 일 버튼 */}
         <button
           onClick={handleOpenTasks}
-          className="flex flex-col items-center gap-2 p-4 rounded-xl border border-cool/20 bg-cool/5 transition-all hover:bg-cool/10 hover:border-cool/40 hover:scale-[1.02] active:scale-[0.98]"
+          className="flex flex-col items-center gap-2 rounded-xl border border-cool/20 bg-cool/5 p-4 transition-all hover:scale-[1.02] hover:border-cool/40 hover:bg-cool/10 active:scale-[0.98]"
         >
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-cool/20">
+          <div className="flex justify-center items-center w-12 h-12 rounded-full bg-cool/20">
             <ListTodo size={24} className="text-cool" />
           </div>
           <div className="text-center">
@@ -39,9 +34,9 @@ export function QuickActions() {
         {/* 메모장 버튼 */}
         <button
           onClick={handleOpenMemo}
-          className="flex flex-col items-center gap-2 p-4 rounded-xl border border-warm/20 bg-warm/5 transition-all hover:bg-warm/10 hover:border-warm/40 hover:scale-[1.02] active:scale-[0.98]"
+          className="flex flex-col items-center gap-2 rounded-xl border border-warm/20 bg-warm/5 p-4 transition-all hover:scale-[1.02] hover:border-warm/40 hover:bg-warm/10 active:scale-[0.98]"
         >
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-warm/20">
+          <div className="flex justify-center items-center w-12 h-12 rounded-full bg-warm/20">
             <FileText size={24} className="text-warm" />
           </div>
           <div className="text-center">

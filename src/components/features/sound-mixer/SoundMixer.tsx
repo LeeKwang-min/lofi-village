@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Play, Pause, Volume2, VolumeX } from 'lucide-react'
 import {
   useSoundContext,
@@ -7,6 +8,23 @@ import {
   AMBIENT_CHANNELS,
   ALL_CHANNELS,
 } from '@/contexts/SoundContext'
+import { YouTubeSection } from '@/components/features/youtube'
+import { useYouTubeContext } from '@/contexts/YouTubeContext'
+
+// 탭 타입 정의
+type MixerTab = 'lofi' | 'ambient' | 'youtube'
+
+interface TabConfig {
+  id: MixerTab
+  label: string
+  emoji: string
+}
+
+const TABS: TabConfig[] = [
+  { id: 'lofi', label: 'Lofi', emoji: '🎹' },
+  { id: 'ambient', label: 'Ambient', emoji: '🌿' },
+  { id: 'youtube', label: 'YouTube', emoji: '📺' },
+]
 
 interface SoundTrackItemProps {
   channel: SoundChannel
@@ -118,8 +136,26 @@ function SoundTrackItem({
 export function SoundMixer() {
   const { activeSounds, volumes, isPlaying, toggleSound, setVolume, togglePlayback, isActive } =
     useSoundContext()
+  const { playlist, currentVideo, isPlaying: isYouTubePlaying } = useYouTubeContext()
+
+  const [activeTab, setActiveTab] = useState<MixerTab>('lofi')
+
+  // 각 탭별 활성 트랙 수 계산
+  const lofiActiveCount = LOFI_CHANNELS.filter(c => activeSounds.has(c.id)).length
+  const ambientActiveCount = AMBIENT_CHANNELS.filter(c => activeSounds.has(c.id)).length
+  const youtubeActiveCount = playlist.length
 
   const activeCount = activeSounds.size
+  const totalActiveCount = activeCount + youtubeActiveCount
+
+  // 탭별 활성 카운트 가져오기
+  const getTabActiveCount = (tabId: MixerTab): number => {
+    switch (tabId) {
+      case 'lofi': return lofiActiveCount
+      case 'ambient': return ambientActiveCount
+      case 'youtube': return youtubeActiveCount
+    }
+  }
 
   return (
     <section className="flex overflow-hidden flex-col rounded-xl border border-surface-hover/50 bg-surface/50">
@@ -130,69 +166,106 @@ export function SoundMixer() {
           <h2 className="text-sm font-semibold text-text-primary">Sound Mixer</h2>
         </div>
         <span className="text-xs text-text-muted">
-          {activeCount > 0 ? `${activeCount}개 선택됨` : '트랙을 선택하세요'}
+          {totalActiveCount > 0 ? `${totalActiveCount}개 선택됨` : '트랙을 선택하세요'}
         </span>
       </div>
 
-      {/* 트랙 목록 */}
-      <div className="flex overflow-y-auto flex-col max-h-72 custom-scrollbar">
-        {/* 🎹 Lofi Beats 섹션 */}
-        <div className="sticky top-0 z-10 px-3 py-2 border-b border-surface-hover/30 bg-surface/80 backdrop-blur-sm">
-          <span className="text-xs font-semibold text-warm">🎹 Lofi Beats</span>
-          <span className="ml-2 text-[10px] text-text-muted">{LOFI_CHANNELS.length}곡</span>
-        </div>
-        <div className="py-1">
-          {LOFI_CHANNELS.map((channel) => (
-            <SoundTrackItem
-              key={channel.id}
-              channel={channel}
-              isActive={isActive(channel.id)}
-              volume={volumes[channel.id] ?? 0.5}
-              isPlaying={isPlaying}
-              onToggle={() => toggleSound(channel.id)}
-              onVolumeChange={(vol) => setVolume(channel.id, vol)}
-            />
-          ))}
-        </div>
+      {/* 탭 네비게이션 */}
+      <div className="flex border-b border-surface-hover/30 bg-background/30">
+        {TABS.map((tab) => {
+          const count = getTabActiveCount(tab.id)
+          const isActiveTab = activeTab === tab.id
 
-        {/* 🌿 Ambient Sounds 섹션 */}
-        <div className="sticky top-0 z-10 px-3 py-2 border-y border-surface-hover/30 bg-surface/80 backdrop-blur-sm">
-          <span className="text-xs font-semibold text-cool">🌿 Ambient Sounds</span>
-          <span className="ml-2 text-[10px] text-text-muted">{AMBIENT_CHANNELS.length}개</span>
-        </div>
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-all relative ${
+                isActiveTab
+                  ? 'text-warm'
+                  : 'text-text-muted hover:text-text-secondary'
+              }`}
+            >
+              <span>{tab.emoji}</span>
+              <span>{tab.label}</span>
+              {count > 0 && (
+                <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[10px] font-semibold ${
+                  isActiveTab
+                    ? 'bg-warm/20 text-warm'
+                    : 'bg-surface-hover/50 text-text-muted'
+                }`}>
+                  {count}
+                </span>
+              )}
+              {/* 활성 탭 인디케이터 */}
+              {isActiveTab && (
+                <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-warm" />
+              )}
+            </button>
+          )
+        })}
+      </div>
 
-        {/* 소그룹별 렌더링 */}
-        {AMBIENT_GROUPS.map((group) => (
-          <div key={group.id}>
-            {/* 소그룹 헤더 */}
-            <div className="flex items-center gap-2 px-4 py-1.5 bg-background/30">
-              <span className="text-sm">{group.emoji}</span>
-              <span className="text-[11px] font-medium text-text-secondary">{group.name}</span>
-              <span className="text-[10px] text-text-muted">({group.channels.length})</span>
-            </div>
-            {/* 소그룹 트랙들 */}
-            <div className="py-0.5">
-              {group.channels.map((channel) => (
-                <SoundTrackItem
-                  key={channel.id}
-                  channel={channel}
-                  isActive={isActive(channel.id)}
-                  volume={volumes[channel.id] ?? 0.5}
-                  isPlaying={isPlaying}
-                  onToggle={() => toggleSound(channel.id)}
-                  onVolumeChange={(vol) => setVolume(channel.id, vol)}
-                />
-              ))}
-            </div>
+      {/* 탭 콘텐츠 - 고정 높이로 UX 일관성 유지 */}
+      <div className="flex overflow-y-auto flex-col h-72 custom-scrollbar">
+        {/* 🎹 Lofi 탭 */}
+        {activeTab === 'lofi' && (
+          <div className="py-1">
+            {LOFI_CHANNELS.map((channel) => (
+              <SoundTrackItem
+                key={channel.id}
+                channel={channel}
+                isActive={isActive(channel.id)}
+                volume={volumes[channel.id] ?? 0.5}
+                isPlaying={isPlaying}
+                onToggle={() => toggleSound(channel.id)}
+                onVolumeChange={(vol) => setVolume(channel.id, vol)}
+              />
+            ))}
           </div>
-        ))}
+        )}
+
+        {/* 🌿 Ambient 탭 */}
+        {activeTab === 'ambient' && (
+          <div>
+            {AMBIENT_GROUPS.map((group) => (
+              <div key={group.id}>
+                {/* 소그룹 헤더 */}
+                <div className="sticky top-0 z-10 flex items-center gap-2 px-4 py-1.5 bg-surface/90 backdrop-blur-sm border-b border-surface-hover/20">
+                  <span className="text-sm">{group.emoji}</span>
+                  <span className="text-[11px] font-medium text-text-secondary">{group.name}</span>
+                  <span className="text-[10px] text-text-muted">({group.channels.length})</span>
+                </div>
+                {/* 소그룹 트랙들 */}
+                <div className="py-0.5">
+                  {group.channels.map((channel) => (
+                    <SoundTrackItem
+                      key={channel.id}
+                      channel={channel}
+                      isActive={isActive(channel.id)}
+                      volume={volumes[channel.id] ?? 0.5}
+                      isPlaying={isPlaying}
+                      onToggle={() => toggleSound(channel.id)}
+                      onVolumeChange={(vol) => setVolume(channel.id, vol)}
+                    />
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 📺 YouTube 탭 */}
+        {activeTab === 'youtube' && (
+          <YouTubeSection />
+        )}
       </div>
 
       {/* 플레이어 컨트롤 바 */}
       <div className="flex gap-4 justify-between items-center px-4 py-3 border-t border-surface-hover/50 bg-background/30">
         {/* 재생 상태 표시 */}
         <div className="flex flex-1 gap-2 items-center min-w-0">
-          {isPlaying && activeCount > 0 ? (
+          {(isPlaying && activeCount > 0) || isYouTubePlaying ? (
             <>
               <div className="flex h-4 items-end gap-0.5">
                 {[...Array(4)].map((_, i) => (
@@ -211,7 +284,7 @@ export function SoundMixer() {
             </>
           ) : (
             <span className="text-xs text-text-muted">
-              {activeCount === 0 ? '트랙을 선택해주세요' : '재생 대기 중'}
+              {totalActiveCount === 0 ? '트랙을 선택해주세요' : '재생 대기 중'}
             </span>
           )}
         </div>
@@ -237,7 +310,7 @@ export function SoundMixer() {
 
         {/* 트랙 카운트 */}
         <div className="flex flex-1 gap-1 justify-end items-center min-w-0">
-          <span className="text-xs text-text-muted">{ALL_CHANNELS.length} tracks</span>
+          <span className="text-xs text-text-muted">{ALL_CHANNELS.length + 1} sources</span>
         </div>
       </div>
     </section>
