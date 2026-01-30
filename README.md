@@ -196,4 +196,6 @@ MIT License
 
 <p align="center">
   Made with ☕ and 🎵
+  <br><br>
+  Made by <a href="https://github.com/LeeKwang-min">@LeeKwang-min</a>
 </p>
