@@ -180,19 +180,12 @@ ipcMain.handle('window:is-always-on-top', () => {
   return mainWindow?.isAlwaysOnTop() ?? false
 })
 
-// TODO(human): 화면 정렬 기능 구현
-// alignTo 매개변수에 따라 창을 화면 왼쪽, 오른쪽, 또는 중앙에 배치하세요
-// 힌트:
-// - screen.getPrimaryDisplay().workAreaSize로 화면 크기를 얻을 수 있습니다
-// - mainWindow.setPosition(x, y)로 창 위치를 설정합니다
-// - mainWindow.getSize()로 현재 창 크기를 얻을 수 있습니다
+// 화면 정렬 기능
 ipcMain.on('window:align', (_event, alignTo: 'left' | 'right' | 'center') => {
-  console.log('IPC received: window:align', alignTo) // 디버깅용
   if (!mainWindow) return
 
   const { width: screenWidth, height: screenHeight } = screen.getPrimaryDisplay().workAreaSize
   const [windowWidth, windowHeight] = mainWindow.getSize()
-  console.log('Screen:', screenWidth, screenHeight, 'Window:', windowWidth, windowHeight) // 디버깅용
 
   const y = Math.floor((screenHeight - windowHeight) / 2);
   if (alignTo === 'left') {

@@ -71,18 +71,12 @@ export function TaskList({ isStandalone = false }: TaskListProps) {
     }
   }
 
-  // TODO(human): 할 일 완료 토글 함수 구현
-  // taskId에 해당하는 할 일의 completed 상태를 반전시키세요
-  // 힌트: map()을 사용해서 해당 id의 task만 업데이트한 새 배열을 만드세요
   const toggleTask = (taskId: string) => {
     setTasks((prev) =>
       prev.map((task) => (task.id === taskId ? { ...task, completed: !task.completed } : task))
     )
   }
 
-  // TODO(human): 할 일 삭제 함수 구현
-  // taskId에 해당하는 할 일을 목록에서 제거하세요
-  // 힌트: filter()를 사용해서 해당 id가 아닌 task만 남긴 새 배열을 만드세요
   const deleteTask = (taskId: string) => {
     setTasks((prev) => prev.filter((task) => task.id !== taskId))
   }

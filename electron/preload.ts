@@ -1,7 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-console.log('Preload script loaded!') // 디버깅용
-
 // 렌더러 프로세스에 안전하게 노출할 창 제어 API
 const windowAPI = {
   // 창 최소화

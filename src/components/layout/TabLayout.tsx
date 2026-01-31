@@ -57,7 +57,7 @@ export function TabLayout({ tabs }: TabLayoutProps) {
       </div>
 
       {/* 탭 콘텐츠 */}
-      <div className="flex-1 flex flex-col overflow-hidden p-4 space-y-4 fade-in">
+      <div className="flex-1 flex flex-col overflow-y-auto p-4 space-y-4 fade-in custom-scrollbar">
         {currentTab?.content}
       </div>
     </div>
