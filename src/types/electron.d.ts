@@ -35,7 +35,7 @@ interface NotificationAPI {
 }
 
 // 서브 윈도우 타입
-type SubWindowType = 'tasks' | 'history' | 'memo'
+type SubWindowType = 'tasks' | 'history' | 'memo' | 'schedule'
 
 interface SubWindowAPI {
   open: (windowType: SubWindowType) => Promise<boolean>

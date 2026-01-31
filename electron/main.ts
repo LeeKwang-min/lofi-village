@@ -9,7 +9,7 @@ interface NotificationActionOptions {
 }
 
 // 서브 윈도우 타입 정의
-type SubWindowType = 'tasks' | 'history' | 'memo'
+type SubWindowType = 'tasks' | 'history' | 'memo' | 'schedule'
 
 interface SubWindowConfig {
   title: string
@@ -21,6 +21,7 @@ const SUB_WINDOW_CONFIGS: Record<SubWindowType, SubWindowConfig> = {
   tasks: { title: '오늘의 할 일', width: 400, height: 500 },
   history: { title: '집중 기록', width: 450, height: 600 },
   memo: { title: '메모장', width: 400, height: 500 },
+  schedule: { title: '일정 추가', width: 400, height: 620 },
 }
 
 let mainWindow: BrowserWindow | null = null

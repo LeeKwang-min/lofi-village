@@ -80,7 +80,7 @@ const notificationAPI = {
 }
 
 // 서브 윈도우 API
-type SubWindowType = 'tasks' | 'history' | 'memo'
+type SubWindowType = 'tasks' | 'history' | 'memo' | 'schedule'
 
 const subWindowAPI = {
   // 서브 윈도우 열기/토글

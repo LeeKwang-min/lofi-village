@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, ReactNode } from 'react'
-import { Music, Timer } from 'lucide-react'
+import { Music, Timer, Calendar } from 'lucide-react'
 
 interface Tab {
   id: string
@@ -57,7 +57,7 @@ export function TabLayout({ tabs }: TabLayoutProps) {
       </div>
 
       {/* 탭 콘텐츠 */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 fade-in custom-scrollbar">
+      <div className="flex-1 flex flex-col overflow-hidden p-4 space-y-4 fade-in">
         {currentTab?.content}
       </div>
     </div>
@@ -68,4 +68,5 @@ export function TabLayout({ tabs }: TabLayoutProps) {
 export const TabIcons = {
   Music: <Music size={16} />,
   Timer: <Timer size={16} />,
+  Calendar: <Calendar size={16} />,
 }
