@@ -30,7 +30,7 @@ function generateId(): string {
 }
 
 interface TaskListProps {
-  isStandalone?: boolean  // 별도 창에서 사용할 때 true
+  isStandalone?: boolean // 별도 창에서 사용할 때 true
 }
 
 export function TaskList({ isStandalone = false }: TaskListProps) {
@@ -66,7 +66,8 @@ export function TaskList({ isStandalone = false }: TaskListProps) {
 
   // Enter 키로 할 일 추가
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    const isComposing = e.nativeEvent.isComposing
+    if (!isComposing && e.code === 'Enter') {
       addTask()
     }
   }
@@ -85,7 +86,9 @@ export function TaskList({ isStandalone = false }: TaskListProps) {
   const totalCount = tasks.length
 
   return (
-    <section className={`${isStandalone ? 'h-full flex flex-col' : 'p-4 rounded-xl border border-surface-hover/50 bg-surface/50'}`}>
+    <section
+      className={`${isStandalone ? 'flex flex-col h-full' : 'p-4 rounded-xl border border-surface-hover/50 bg-surface/50'}`}
+    >
       {!isStandalone && (
         <div className="flex justify-between items-center mb-3">
           <div className="flex gap-2 items-center">
@@ -102,16 +105,16 @@ export function TaskList({ isStandalone = false }: TaskListProps) {
 
       {/* 진행률 (standalone 모드) */}
       {isStandalone && totalCount > 0 && (
-        <div className="mb-4 p-3 rounded-xl border border-cool/20 bg-cool/5">
+        <div className="p-3 mb-4 rounded-xl border border-cool/20 bg-cool/5">
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm font-medium text-text-primary">오늘의 진행률</span>
-            <span className="text-sm text-cool font-bold">
+            <span className="text-sm font-bold text-cool">
               {totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0}%
             </span>
           </div>
-          <div className="h-2 bg-surface rounded-full overflow-hidden">
+          <div className="overflow-hidden h-2 rounded-full bg-surface">
             <div
-              className="h-full bg-cool transition-all duration-300"
+              className="h-full transition-all duration-300 bg-cool"
               style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
             />
           </div>
@@ -141,7 +144,9 @@ export function TaskList({ isStandalone = false }: TaskListProps) {
       </div>
 
       {/* 할 일 목록 */}
-      <div className={`overflow-y-auto space-y-2 custom-scrollbar ${isStandalone ? 'flex-1' : 'max-h-48'}`}>
+      <div
+        className={`custom-scrollbar space-y-2 overflow-y-auto ${isStandalone ? 'flex-1' : 'max-h-48'}`}
+      >
         {tasks.length === 0 ? (
           <div className="flex gap-2 items-center p-2 rounded-lg bg-background/30">
             <div className="w-4 h-4 rounded-full border-2 border-cool/30" />

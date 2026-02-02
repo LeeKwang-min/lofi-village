@@ -64,6 +64,55 @@ function createWindow(): void {
     mainWindow?.show()
   })
 
+  // ============================================
+  // 렌더러 프로세스 상태 관리 (흰 화면 방지)
+  // ============================================
+
+  // 렌더러 크래시 시 자동 복구
+  mainWindow.webContents.on('crashed', (_event, killed) => {
+    console.error('Renderer crashed, killed:', killed)
+    // 크래시 후 자동으로 페이지 다시 로드
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.reload()
+      }
+    }, 500)
+  })
+
+  // 렌더러가 응답하지 않을 때 처리
+  mainWindow.webContents.on('unresponsive', () => {
+    console.warn('Renderer became unresponsive')
+  })
+
+  // 렌더러가 다시 응답할 때
+  mainWindow.webContents.on('responsive', () => {
+    console.log('Renderer became responsive again')
+  })
+
+  // 창이 복원될 때 (최소화에서 돌아올 때) 렌더러 상태 확인
+  mainWindow.on('restore', () => {
+    // 렌더러가 정상인지 확인하고 필요시 리로드
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.executeJavaScript('document.body !== null')
+        .catch(() => {
+          console.warn('Renderer may be in bad state, reloading...')
+          mainWindow?.webContents.reload()
+        })
+    }
+  })
+
+  // 창이 포커스될 때 렌더러 상태 확인
+  mainWindow.on('focus', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      // 렌더러가 살아있는지 간단히 체크
+      mainWindow.webContents.executeJavaScript('1')
+        .catch(() => {
+          console.warn('Renderer not responding on focus, reloading...')
+          mainWindow?.webContents.reload()
+        })
+    }
+  })
+
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
@@ -302,9 +351,35 @@ app.on('window-all-closed', () => {
   }
 })
 
-// 에러 핸들링
-app.on('render-process-gone', (_event, _webContents, details) => {
+// 에러 핸들링 - 렌더러 프로세스 종료 시 복구
+app.on('render-process-gone', (event, webContents, details) => {
   console.error('Renderer process gone:', details.reason)
+
+  // 메인 윈도우의 렌더러가 종료된 경우 복구 시도
+  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents === webContents) {
+    // clean-exit이 아닌 경우에만 복구 (사용자가 의도적으로 닫은 게 아닐 때)
+    if (details.reason !== 'clean-exit') {
+      console.log('Attempting to reload main window...')
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          if (process.env['ELECTRON_RENDERER_URL']) {
+            mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
+          } else {
+            mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
+          }
+        }
+      }, 1000)
+    }
+  }
+
+  // 서브 윈도우의 렌더러가 종료된 경우 해당 창 닫기
+  for (const [windowType, subWindow] of subWindows.entries()) {
+    if (!subWindow.isDestroyed() && subWindow.webContents === webContents) {
+      console.log(`Closing crashed sub-window: ${windowType}`)
+      subWindow.close()
+      break
+    }
+  }
 })
 
 app.on('child-process-gone', (_event, details) => {
