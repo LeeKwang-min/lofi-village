@@ -1,5 +1,16 @@
-import { app, BrowserWindow, shell, ipcMain, screen, Notification } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, screen, Notification, powerSaveBlocker } from 'electron'
 import { join } from 'path'
+
+// ============================================
+// 백그라운드에서도 오디오/타이머가 멈추지 않도록 설정
+// ============================================
+
+// Chromium 플래그: 백그라운드 렌더러 제한 완전 비활성화
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
+
+// Power Save Blocker ID (앱 절전 모드 방지)
+let powerSaveBlockerId: number | null = null
 
 // 알림 옵션 타입 정의
 interface NotificationActionOptions {
@@ -52,7 +63,8 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false // 백그라운드에서도 오디오/타이머 유지
     }
   })
 
@@ -154,7 +166,8 @@ function createOrToggleSubWindow(windowType: SubWindowType): boolean {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false // 백그라운드에서도 오디오 유지
     }
   })
 
@@ -338,6 +351,10 @@ ipcMain.on('subwindow:close-self', (event) => {
 })
 
 app.whenReady().then(() => {
+  // 시스템이 앱을 절전 모드로 전환하지 않도록 차단 (오디오 재생 유지)
+  powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension')
+  console.log('Power save blocker started:', powerSaveBlockerId)
+
   createWindow()
 
   app.on('activate', function () {
@@ -346,6 +363,12 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  // Power save blocker 해제
+  if (powerSaveBlockerId !== null && powerSaveBlocker.isStarted(powerSaveBlockerId)) {
+    powerSaveBlocker.stop(powerSaveBlockerId)
+    console.log('Power save blocker stopped')
+  }
+
   if (process.platform !== 'darwin') {
     app.quit()
   }

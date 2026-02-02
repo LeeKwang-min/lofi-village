@@ -219,6 +219,27 @@ export function SoundProvider({ children }: { children: ReactNode }) {
     })
   }, [])
 
+  // 백그라운드에서 돌아올 때 오디오 상태 복구
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && isPlayingRef.current) {
+        // visible 상태로 돌아왔고, 재생 중이었다면 모든 활성 사운드 재개
+        setActiveSounds((current) => {
+          current.forEach((id) => {
+            const audioState = audioRefs.current.get(id)
+            if (audioState && audioState.audio.paused) {
+              audioState.audio.play().catch(console.error)
+            }
+          })
+          return current
+        })
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [])
+
   // 전역 재생/정지 토글
   const togglePlayback = useCallback(() => {
     if (isPlayingRef.current) {
