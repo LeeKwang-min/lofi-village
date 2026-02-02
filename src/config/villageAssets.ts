@@ -17,6 +17,7 @@ export interface BuildingConfig {
 // ==================== TILES (바닥) ====================
 // 가격: 5~20 코인
 export const TILE_ASSETS: BuildingConfig[] = [
+  // { id: 'tile', name: '바닥', layer: 'tile', imagePath: './map/custom/grass.png', cost: 0, description: '바닥 타일' },
   { id: 'tile_01', name: '바닥 1', layer: 'tile', imagePath: './map/Tile/medievalTile_01.png', cost: 5, description: '바닥 타일' },
   { id: 'tile_02', name: '바닥 2', layer: 'tile', imagePath: './map/Tile/medievalTile_02.png', cost: 5, description: '바닥 타일' },
   { id: 'tile_03', name: '바닥 3', layer: 'tile', imagePath: './map/Tile/medievalTile_03.png', cost: 5, description: '바닥 타일' },
@@ -80,6 +81,7 @@ export const TILE_ASSETS: BuildingConfig[] = [
 // ==================== ENVIRONMENT (자연) ====================
 // 가격: 8~35 코인
 export const ENVIRONMENT_ASSETS: BuildingConfig[] = [
+  // { id: 'env', name: '자연', layer: 'environment', imagePath: './map/custom/tree.png', cost: 0, description: '자연물' },
   { id: 'env_01', name: '자연 1', layer: 'environment', imagePath: './map/Environment/medievalEnvironment_01.png', cost: 20, description: '자연물' },
   { id: 'env_02', name: '자연 2', layer: 'environment', imagePath: './map/Environment/medievalEnvironment_02.png', cost: 30, description: '자연물' },
   { id: 'env_03', name: '자연 3', layer: 'environment', imagePath: './map/Environment/medievalEnvironment_03.png', cost: 25, description: '자연물' },
@@ -134,6 +136,7 @@ export const STRUCTURE_ASSETS: BuildingConfig[] = [
 // ==================== UNITS (유닛) ====================
 // 가격: 30~200 코인
 export const UNIT_ASSETS: BuildingConfig[] = [
+  // { id: 'unit', name: '유닛', layer: 'unit', imagePath: './map/custom/woman.png', cost: 0, description: '유닛' },
   { id: 'unit_01', name: '유닛 1', layer: 'unit', imagePath: './map/Unit/medievalUnit_01.png', cost: 30, description: '유닛' },
   { id: 'unit_02', name: '유닛 2', layer: 'unit', imagePath: './map/Unit/medievalUnit_02.png', cost: 30, description: '유닛' },
   { id: 'unit_03', name: '유닛 3', layer: 'unit', imagePath: './map/Unit/medievalUnit_03.png', cost: 35, description: '유닛' },
