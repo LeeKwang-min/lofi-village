@@ -56,6 +56,13 @@ const windowAPI = {
     const handler = () => callback()
     ipcRenderer.on('memory:pressure', handler)
     return () => ipcRenderer.removeListener('memory:pressure', handler)
+  },
+
+  // 진짜 가시성 변경 이벤트 (backgroundThrottling: false에서도 신뢰 가능)
+  onVisibilityChanged: (callback: (visible: boolean) => void): (() => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, visible: boolean) => callback(visible)
+    ipcRenderer.on('window:visibility-changed', handler)
+    return () => ipcRenderer.removeListener('window:visibility-changed', handler)
   }
 }
 

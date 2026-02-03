@@ -10,6 +10,7 @@ interface ElectronAPI {
   onFocused: (callback: () => void) => () => void
   onGPURecovered: (callback: () => void) => () => void
   onMemoryPressure: (callback: () => void) => () => void
+  onVisibilityChanged: (callback: (visible: boolean) => void) => () => void
 }
 
 // 알림 API 타입 정의

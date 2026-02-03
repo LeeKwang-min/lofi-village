@@ -4,12 +4,39 @@ import { useVillageContext } from '@/contexts/VillageContext'
 import { useNotification } from '@/hooks/useNotification'
 import { useState, useCallback, useEffect, useRef } from 'react'
 
+// 가시성 기반 트랜지션 훅: 백그라운드에서 돌아올 때 트랜지션 일시 비활성화
+// 메인 프로세스의 IPC 신호 사용 (backgroundThrottling: false에서도 신뢰 가능)
+function useVisibilityTransition() {
+  const [enableTransition, setEnableTransition] = useState(true)
+
+  useEffect(() => {
+    // 메인 프로세스에서 가시성 변경 수신
+    const unsubscribe = window.electronAPI?.onVisibilityChanged?.((visible) => {
+      if (visible) {
+        // 백그라운드에서 돌아올 때 트랜지션 잠시 비활성화 (즉시 동기화)
+        setEnableTransition(false)
+        // 다음 프레임에서 트랜지션 다시 활성화
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setEnableTransition(true)
+          })
+        })
+      }
+    })
+
+    return () => unsubscribe?.()
+  }, [])
+
+  return enableTransition
+}
+
 const FOCUS_REWARD = 50 // 집중 완료 시 보상 코인
 
 export function PomodoroTimer() {
   const { addCoins, addFocusTime } = useVillageContext()
   const [showReward, setShowReward] = useState(false)
   const [pendingNotification, setPendingNotification] = useState<'focus' | 'break' | null>(null)
+  const enableTransition = useVisibilityTransition()
 
   const { timeLeft, status, mode, progress, start, pause, reset, skip, extendTime } = useTimer({
     focusMinutes: 60,
@@ -134,7 +161,7 @@ export function PomodoroTimer() {
             strokeLinecap="round"
             strokeDasharray={2 * Math.PI * 92}
             strokeDashoffset={2 * Math.PI * 92 * (1 - progress)}
-            className={`transition-all duration-1000 ${isFocus ? 'text-warm' : 'text-cool'}`}
+            className={`${enableTransition ? 'transition-all duration-1000' : ''} ${isFocus ? 'text-warm' : 'text-cool'}`}
           />
         </svg>
 

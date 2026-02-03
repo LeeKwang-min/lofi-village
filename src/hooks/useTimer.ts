@@ -32,21 +32,55 @@ export function useTimer(options: UseTimerOptions = {}): UseTimerReturn {
   const [status, setStatus] = useState<TimerStatus>('idle')
   const [timeLeft, setTimeLeft] = useState(focusMinutes * 60)
 
+  // ============================================
+  // 핵심 ref들
+  // ============================================
   const intervalRef = useRef<NodeJS.Timeout | null>(null)
   const onCompleteRef = useRef(onComplete)
 
-  // onComplete 콜백 최신 상태 유지
+  // endAt 기반 정확한 시간 계산 (드리프트 방지)
+  const endAtRef = useRef<number | null>(null)
+
+  // 상태 ref (interval 콜백에서 최신 상태 참조용)
+  const modeRef = useRef<TimerMode>('focus')
+  const statusRef = useRef<TimerStatus>('idle')
+
+  // 메인 프로세스에서 받은 진짜 가시성 상태 (backgroundThrottling: false에서도 신뢰 가능)
+  const isVisibleRef = useRef(true)
+
+  // ============================================
+  // 콜백 ref 동기화
+  // ============================================
   useEffect(() => {
     onCompleteRef.current = onComplete
   }, [onComplete])
 
-  // 현재 모드의 총 시간 (초)
-  const totalTime = mode === 'focus' ? focusMinutes * 60 : breakMinutes * 60
+  // ============================================
+  // 메인 프로세스에서 가시성 IPC 수신
+  // ============================================
+  useEffect(() => {
+    const unsubscribe = window.electronAPI?.onVisibilityChanged?.((visible) => {
+      isVisibleRef.current = visible
 
-  // 진행률 계산
+      // visible로 돌아올 때 UI 즉시 동기화
+      if (visible && statusRef.current === 'running' && endAtRef.current) {
+        const remaining = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000))
+        setTimeLeft(remaining)
+      }
+    })
+
+    return () => unsubscribe?.()
+  }, [])
+
+  // ============================================
+  // 계산된 값들
+  // ============================================
+  const totalTime = mode === 'focus' ? focusMinutes * 60 : breakMinutes * 60
   const progress = 1 - timeLeft / totalTime
 
-  // 타이머 정리 함수
+  // ============================================
+  // 타이머 정리 함수 (interval 중복 방지 포함)
+  // ============================================
   const clearTimer = useCallback(() => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current)
@@ -54,63 +88,146 @@ export function useTimer(options: UseTimerOptions = {}): UseTimerReturn {
     }
   }, [])
 
-  // 타이머 tick: 1초마다 호출되어 시간을 감소시킴
+  // ============================================
+  // 타이머 완료 처리
+  // ============================================
+  const handleComplete = useCallback(() => {
+    clearTimer()
+    endAtRef.current = null
+
+    const completedMode = modeRef.current
+    onCompleteRef.current?.(completedMode)
+
+    const nextMode = completedMode === 'focus' ? 'break' : 'focus'
+    const nextTime = nextMode === 'focus' ? focusMinutes * 60 : breakMinutes * 60
+
+    modeRef.current = nextMode
+    statusRef.current = 'idle'
+
+    setMode(nextMode)
+    setTimeLeft(nextTime)
+    setStatus('idle')
+  }, [clearTimer, focusMinutes, breakMinutes])
+
+  // ============================================
+  // 타이머 tick (endAt 기반 정확한 계산)
+  // ============================================
   const tick = useCallback(() => {
-    setTimeLeft((prev) => {
-      if (prev <= 1) {
-        setTimeout(() => {
-          clearTimer()
-          onCompleteRef.current?.(mode)
-          const nextMode = mode === 'focus' ? 'break' : 'focus'
-          setMode(nextMode)
-          setTimeLeft(nextMode === 'focus' ? focusMinutes * 60 : breakMinutes * 60)
-          setStatus('idle')
-        }, 0)
-        return 0
+    if (!endAtRef.current) return
+
+    const now = Date.now()
+    const remaining = Math.max(0, Math.ceil((endAtRef.current - now) / 1000))
+
+    if (remaining <= 0) {
+      // 타이머 완료
+      handleComplete()
+    } else {
+      // visible일 때만 UI 업데이트 (백그라운드에서는 건너뜀)
+      if (isVisibleRef.current) {
+        setTimeLeft(remaining)
       }
-      return prev - 1
-    })
-  }, [clearTimer, mode, focusMinutes, breakMinutes])
+    }
+  }, [handleComplete])
 
-  // 타이머 시작
+  // ============================================
+  // 타이머 시작 (중복 가드 포함)
+  // ============================================
   const start = useCallback(() => {
-    if (status === 'running') return
+    // 중복 가드: 이미 running이면 무시
+    if (statusRef.current === 'running') {
+      return
+    }
+    // 기존 interval이 있으면 정리
+    if (intervalRef.current) {
+      clearTimer()
+    }
 
+    // endAt 계산: 현재 timeLeft를 기준으로 목표 시각 설정
+    const currentTimeLeft = endAtRef.current
+      ? Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000))
+      : timeLeft
+
+    endAtRef.current = Date.now() + currentTimeLeft * 1000
+
+    statusRef.current = 'running'
     setStatus('running')
-    intervalRef.current = setInterval(tick, 1000)
-  }, [status, tick])
 
+    // interval 시작 (200ms 간격으로 체크 - 더 정확한 완료 감지)
+    intervalRef.current = setInterval(tick, 200)
+  }, [timeLeft, tick, clearTimer])
+
+  // ============================================
   // 타이머 일시정지
+  // ============================================
   const pause = useCallback(() => {
-    if (status !== 'running') return
+    if (statusRef.current !== 'running') return
 
     clearTimer()
-    setStatus('paused')
-  }, [status, clearTimer])
 
+    // 남은 시간 저장 (재시작 시 사용)
+    if (endAtRef.current) {
+      const remaining = Math.max(0, Math.ceil((endAtRef.current - Date.now()) / 1000))
+      setTimeLeft(remaining)
+    }
+    endAtRef.current = null
+
+    statusRef.current = 'paused'
+    setStatus('paused')
+  }, [clearTimer])
+
+  // ============================================
   // 타이머 리셋
+  // ============================================
   const reset = useCallback(() => {
     clearTimer()
+    endAtRef.current = null
+
+    const initialTime = focusMinutes * 60
+
+    statusRef.current = 'idle'
+    modeRef.current = 'focus'
+
     setStatus('idle')
     setMode('focus')
-    setTimeLeft(focusMinutes * 60)
+    setTimeLeft(initialTime)
   }, [clearTimer, focusMinutes])
 
+  // ============================================
   // 현재 세션 스킵
+  // ============================================
   const skip = useCallback(() => {
     clearTimer()
-    const nextMode = mode === 'focus' ? 'break' : 'focus'
-    setMode(nextMode)
-    setTimeLeft(nextMode === 'focus' ? focusMinutes * 60 : breakMinutes * 60)
-    setStatus('idle')
-  }, [clearTimer, mode, focusMinutes, breakMinutes])
+    endAtRef.current = null
 
+    const nextMode = modeRef.current === 'focus' ? 'break' : 'focus'
+    const nextTime = nextMode === 'focus' ? focusMinutes * 60 : breakMinutes * 60
+
+    modeRef.current = nextMode
+    statusRef.current = 'idle'
+
+    setMode(nextMode)
+    setTimeLeft(nextTime)
+    setStatus('idle')
+  }, [clearTimer, focusMinutes, breakMinutes])
+
+  // ============================================
   // 시간 연장 (분 단위)
+  // ============================================
   const extendTime = useCallback((minutes: number) => {
+    const addMs = minutes * 60 * 1000
+
+    if (endAtRef.current && statusRef.current === 'running') {
+      // running 중이면 endAt 연장
+      endAtRef.current += addMs
+    }
+
+    // UI도 업데이트
     setTimeLeft(prev => prev + minutes * 60)
   }, [])
 
+  // ============================================
   // 컴포넌트 언마운트 시 타이머 정리
+  // ============================================
   useEffect(() => {
     return () => clearTimer()
   }, [clearTimer])

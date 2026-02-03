@@ -131,7 +131,6 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
         },
         events: {
           onReady: (event) => {
-            console.log('[YouTube] Player ready')
             playerRef.current = event.target as YTPlayer
             playerRef.current.setVolume(volume * 100)
             setIsReady(true)
@@ -141,7 +140,6 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
               return
             }
             const state = getPlayerStateFromCode(event.data)
-            console.log('[YouTube] State changed:', state, event.data)
             setPlayerState(state)
             setIsPlaying(state === 'playing')
           },
@@ -165,8 +163,6 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
   // 내부: 영상 로드 및 재생
   const loadAndPlayVideo = useCallback((video: YouTubeVideo) => {
     setError(null)
-    console.log('[YouTube] Loading video:', video.videoId)
-
     setCurrentVideo(video)
     currentVideoRef.current = video
 
@@ -290,8 +286,6 @@ export function YouTubeProvider({ children }: { children: ReactNode }) {
 
   // 전체 초기화 (플레이리스트 포함)
   const clearVideo = useCallback(() => {
-    console.log('[YouTube] Clearing all')
-
     currentVideoRef.current = null
     setPlaylist([])
     setCurrentVideo(null)

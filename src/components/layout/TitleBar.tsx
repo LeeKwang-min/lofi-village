@@ -18,7 +18,6 @@ export function TitleBar() {
   }
 
   const handleAlign = (position: 'left' | 'right' | 'center') => {
-    console.log('handleAlign', position)
     window.electronAPI?.align(position)
   }
 

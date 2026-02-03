@@ -61,7 +61,6 @@ export function useNotification(options: UseNotificationOptions = {}): UseNotifi
 
     // 알림 클릭/액션 이벤트 리스너
     const cleanup = notificationService.onClicked((data) => {
-      console.log('Notification action:', data.action)
       onActionRef.current?.(data.action as NotificationActionIdType)
     })
 
