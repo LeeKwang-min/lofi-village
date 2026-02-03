@@ -6,6 +6,8 @@ interface ElectronAPI {
   isAlwaysOnTop: () => Promise<boolean>
   align: (position: 'left' | 'right' | 'center') => void
   platform: NodeJS.Platform
+  onRestored: (callback: () => void) => () => void
+  onFocused: (callback: () => void) => () => void
 }
 
 // 알림 API 타입 정의

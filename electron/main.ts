@@ -1,5 +1,28 @@
-import { app, BrowserWindow, shell, ipcMain, screen, Notification } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, screen, Notification, powerSaveBlocker } from 'electron'
 import { join } from 'path'
+
+// ============================================
+// 백그라운드 리소스 유지를 위한 설정
+// ============================================
+
+// Chromium 플래그: 백그라운드에서도 렌더러가 정상 동작하도록 설정
+app.commandLine.appendSwitch('disable-renderer-backgrounding')
+app.commandLine.appendSwitch('disable-background-timer-throttling')
+
+// 창 가려짐 감지(Occlusion Detection) 비활성화 - macOS & Windows 공통
+// 창이 다른 창에 가려져도 throttling 하지 않음
+app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
+
+// Windows 전용: Power Throttling 비활성화
+if (process.platform === 'win32') {
+  // 하드웨어 가속 유지 (절전 모드에서도)
+  app.commandLine.appendSwitch('disable-gpu-process-crash-limit')
+  // 백그라운드에서 프레임 제한 해제
+  app.commandLine.appendSwitch('disable-frame-rate-limit')
+}
+
+// powerSaveBlocker ID 저장
+let powerSaveBlockerId: number | null = null
 
 // 알림 옵션 타입 정의
 interface NotificationActionOptions {
@@ -52,9 +75,13 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false // 백그라운드에서도 타이머/오디오 유지
     }
   })
+
+  // 백그라운드에서도 throttling 방지 (webPreferences 외 추가 보장)
+  mainWindow.webContents.setBackgroundThrottling(false)
 
   mainWindow.on('ready-to-show', () => {
     // 화면 오른쪽에 초기 배치 (y=0으로 상단 정렬)
@@ -67,6 +94,23 @@ function createWindow(): void {
   mainWindow.webContents.setWindowOpenHandler((details) => {
     shell.openExternal(details.url)
     return { action: 'deny' }
+  })
+
+  // 창이 숨겨져도 렌더러 유지 (macOS에서 중요)
+  mainWindow.on('hide', () => {
+    console.log('[Electron] Window hidden, but renderer should keep running')
+  })
+
+  // 창 복원 시 렌더러 상태 확인
+  mainWindow.on('restore', () => {
+    console.log('[Electron] Window restored')
+    // 렌더러에 복원 이벤트 전달 (필요시 상태 재동기화)
+    mainWindow?.webContents.send('window:restored')
+  })
+
+  mainWindow.on('focus', () => {
+    // 포커스 획득 시 렌더러에 알림
+    mainWindow?.webContents.send('window:focused')
   })
 
   // electron-vite에서 제공하는 환경 변수로 개발/프로덕션 구분
@@ -105,9 +149,13 @@ function createOrToggleSubWindow(windowType: SubWindowType): boolean {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false
+      nodeIntegration: false,
+      backgroundThrottling: false
     }
   })
+
+  // 서브 윈도우도 백그라운드 throttling 방지
+  subWindow.webContents.setBackgroundThrottling(false)
 
   subWindow.on('ready-to-show', () => {
     // 메인 창 옆에 배치
@@ -289,6 +337,12 @@ ipcMain.on('subwindow:close-self', (event) => {
 })
 
 app.whenReady().then(() => {
+  // powerSaveBlocker 시작: OS가 앱을 suspend하지 않도록 방지
+  // 'prevent-app-suspension': 앱이 suspend되는 것을 방지 (오디오/타이머 유지에 적합)
+  // 'prevent-display-sleep': 디스플레이가 꺼지는 것도 방지 (필요시 사용)
+  powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension')
+  console.log('[Electron] Power save blocker started with ID:', powerSaveBlockerId)
+
   createWindow()
 
   app.on('activate', function () {
@@ -297,6 +351,12 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  // powerSaveBlocker 정리
+  if (powerSaveBlockerId !== null && powerSaveBlocker.isStarted(powerSaveBlockerId)) {
+    powerSaveBlocker.stop(powerSaveBlockerId)
+    console.log('[Electron] Power save blocker stopped')
+  }
+
   if (process.platform !== 'darwin') {
     app.quit()
   }

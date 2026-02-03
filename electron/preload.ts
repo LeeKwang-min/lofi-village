@@ -28,7 +28,21 @@ const windowAPI = {
   },
 
   // 플랫폼 정보
-  platform: process.platform
+  platform: process.platform,
+
+  // 창 복원 이벤트 리스너 (백그라운드에서 돌아올 때)
+  onRestored: (callback: () => void): (() => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('window:restored', handler)
+    return () => ipcRenderer.removeListener('window:restored', handler)
+  },
+
+  // 창 포커스 이벤트 리스너
+  onFocused: (callback: () => void): (() => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('window:focused', handler)
+    return () => ipcRenderer.removeListener('window:focused', handler)
+  }
 }
 
 // 알림 관련 API
