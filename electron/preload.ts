@@ -42,6 +42,20 @@ const windowAPI = {
     const handler = () => callback()
     ipcRenderer.on('window:focused', handler)
     return () => ipcRenderer.removeListener('window:focused', handler)
+  },
+
+  // GPU 복구 이벤트 리스너
+  onGPURecovered: (callback: () => void): (() => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('gpu:recovered', handler)
+    return () => ipcRenderer.removeListener('gpu:recovered', handler)
+  },
+
+  // 메모리 압박 이벤트 리스너 (OOM 방지)
+  onMemoryPressure: (callback: () => void): (() => void) => {
+    const handler = () => callback()
+    ipcRenderer.on('memory:pressure', handler)
+    return () => ipcRenderer.removeListener('memory:pressure', handler)
   }
 }
 

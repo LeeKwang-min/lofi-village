@@ -13,10 +13,16 @@ app.commandLine.appendSwitch('disable-background-timer-throttling')
 // 창이 다른 창에 가려져도 throttling 하지 않음
 app.commandLine.appendSwitch('disable-features', 'CalculateNativeWinOcclusion')
 
+// [공통] GPU 프로세스 안정성 강화
+app.commandLine.appendSwitch('disable-gpu-process-crash-limit')
+
+// macOS 전용: 가려진 창의 렌더링 유지
+if (process.platform === 'darwin') {
+  app.commandLine.appendSwitch('disable-backgrounding-occluded-windows')
+}
+
 // Windows 전용: Power Throttling 비활성화
 if (process.platform === 'win32') {
-  // 하드웨어 가속 유지 (절전 모드에서도)
-  app.commandLine.appendSwitch('disable-gpu-process-crash-limit')
   // 백그라운드에서 프레임 제한 해제
   app.commandLine.appendSwitch('disable-frame-rate-limit')
 }
@@ -101,15 +107,26 @@ function createWindow(): void {
     console.log('[Electron] Window hidden, but renderer should keep running')
   })
 
-  // 창 복원 시 렌더러 상태 확인
+  // 창이 다시 보일 때 GPU 컨텍스트 복구
+  mainWindow.on('show', () => {
+    console.log('[Electron] Window shown, forcing repaint')
+    mainWindow?.webContents.invalidate()
+  })
+
+  // 창 복원 시 렌더러 상태 확인 + GPU 복구
   mainWindow.on('restore', () => {
     console.log('[Electron] Window restored')
-    // 렌더러에 복원 이벤트 전달 (필요시 상태 재동기화)
+    mainWindow?.webContents.invalidate()
     mainWindow?.webContents.send('window:restored')
   })
 
+  // 포커스 획득 시 GPU 컨텍스트 복구 (가려졌다가 돌아올 때 중요)
   mainWindow.on('focus', () => {
-    // 포커스 획득 시 렌더러에 알림
+    console.log('[Electron] Window focused, forcing repaint')
+    // 약간의 지연 후 invalidate (GPU 컨텍스트 복구 시간 확보)
+    setTimeout(() => {
+      mainWindow?.webContents.invalidate()
+    }, 50)
     mainWindow?.webContents.send('window:focused')
   })
 
@@ -345,12 +362,18 @@ app.whenReady().then(() => {
 
   createWindow()
 
+  // 메모리 모니터링 시작
+  startMemoryMonitoring()
+
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
   })
 })
 
 app.on('window-all-closed', () => {
+  // 메모리 모니터링 중지
+  stopMemoryMonitoring()
+
   // powerSaveBlocker 정리
   if (powerSaveBlockerId !== null && powerSaveBlocker.isStarted(powerSaveBlockerId)) {
     powerSaveBlocker.stop(powerSaveBlockerId)
@@ -362,11 +385,110 @@ app.on('window-all-closed', () => {
   }
 })
 
-// 에러 핸들링
-app.on('render-process-gone', (_event, _webContents, details) => {
-  console.error('Renderer process gone:', details.reason)
+// ============================================
+// 에러 핸들링 및 자동 복구
+// ============================================
+
+// 렌더러 프로세스 종료 시 자동 복구
+app.on('render-process-gone', (event, webContents, details) => {
+  console.error('[Electron] Renderer process gone:', details.reason)
+
+  // 복구 가능한 상황인지 확인
+  const recoverableReasons = ['crashed', 'oom', 'launch-failed', 'integrity-failure']
+
+  if (recoverableReasons.includes(details.reason)) {
+    console.log('[Electron] Attempting to recover renderer...')
+
+    // 해당 webContents가 메인 윈도우인지 확인
+    if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents === webContents) {
+      // 약간의 지연 후 페이지 리로드
+      setTimeout(() => {
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          console.log('[Electron] Reloading main window...')
+          mainWindow.webContents.reload()
+        }
+      }, 1000)
+    }
+  } else if (details.reason === 'killed') {
+    // OS에 의해 kill된 경우 - 창 재생성
+    console.log('[Electron] Renderer was killed, recreating window...')
+    setTimeout(() => {
+      if (!mainWindow || mainWindow.isDestroyed()) {
+        createWindow()
+      }
+    }, 1000)
+  }
 })
 
+// GPU 등 자식 프로세스 종료 시 처리
 app.on('child-process-gone', (_event, details) => {
-  console.error('Child process gone:', details.type, details.reason)
+  console.error('[Electron] Child process gone:', details.type, details.reason)
+
+  // GPU 프로세스 크래시 시 렌더러 강제 repaint
+  if (details.type === 'GPU') {
+    console.log('[Electron] GPU process crashed, forcing repaint on all windows...')
+
+    // 모든 윈도우에 repaint 신호
+    setTimeout(() => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.invalidate()
+        // 렌더러에 GPU 복구 알림
+        mainWindow.webContents.send('gpu:recovered')
+      }
+
+      subWindows.forEach((window) => {
+        if (!window.isDestroyed()) {
+          window.webContents.invalidate()
+        }
+      })
+    }, 500)
+  }
 })
+
+// ============================================
+// 메모리 모니터링 (OOM 방지)
+// ============================================
+let memoryCheckInterval: NodeJS.Timeout | null = null
+
+function startMemoryMonitoring() {
+  // 30초마다 메모리 체크
+  memoryCheckInterval = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return
+
+    // 렌더러 프로세스 메모리 정보 요청
+    mainWindow.webContents.executeJavaScript(`
+      performance.memory ? {
+        usedJSHeapSize: performance.memory.usedJSHeapSize,
+        totalJSHeapSize: performance.memory.totalJSHeapSize,
+        jsHeapSizeLimit: performance.memory.jsHeapSizeLimit
+      } : null
+    `).then((memoryInfo) => {
+      if (memoryInfo) {
+        const usedMB = Math.round(memoryInfo.usedJSHeapSize / 1024 / 1024)
+        const limitMB = Math.round(memoryInfo.jsHeapSizeLimit / 1024 / 1024)
+        const usagePercent = Math.round((memoryInfo.usedJSHeapSize / memoryInfo.jsHeapSizeLimit) * 100)
+
+        // 메모리 사용량이 80% 이상이면 경고
+        if (usagePercent >= 80) {
+          console.warn(`[Electron] High memory usage: ${usedMB}MB / ${limitMB}MB (${usagePercent}%)`)
+
+          // 90% 이상이면 가비지 컬렉션 유도
+          if (usagePercent >= 90) {
+            console.warn('[Electron] Critical memory usage, triggering GC...')
+            // 렌더러에 메모리 정리 요청
+            mainWindow?.webContents.send('memory:pressure')
+          }
+        }
+      }
+    }).catch(() => {
+      // performance.memory는 Chrome 계열에서만 지원, 에러 무시
+    })
+  }, 30000)
+}
+
+function stopMemoryMonitoring() {
+  if (memoryCheckInterval) {
+    clearInterval(memoryCheckInterval)
+    memoryCheckInterval = null
+  }
+}

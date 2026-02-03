@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { AppShell } from './components/layout/AppShell'
 import { SubWindowShell } from './components/layout/SubWindowShell'
 import { TabLayout, TabIcons } from './components/layout/TabLayout'
@@ -19,6 +20,70 @@ import { EventProvider } from './contexts/EventContext'
 import { AlarmProvider } from './contexts/AlarmContext'
 import { useEventReminder } from './hooks/useEventReminder'
 import { useAlarmReminder } from './hooks/useAlarmReminder'
+
+// GPU 컨텍스트 복구 및 메모리 관리를 위한 커스텀 훅
+function useGPUContextRecovery() {
+  const [, setForceUpdate] = useState(0)
+
+  useEffect(() => {
+    // 강제 리렌더링 트리거
+    const forceRepaint = () => {
+      // 1. React 리렌더링 트리거
+      setForceUpdate(prev => prev + 1)
+      // 2. DOM 강제 repaint
+      window.dispatchEvent(new Event('resize'))
+    }
+
+    // Electron에서 창이 다시 보일 때 GPU 컨텍스트 복구
+    const unsubscribeFocus = window.electronAPI?.onFocused?.(() => {
+      console.log('[Renderer] Window focused, triggering repaint')
+      forceRepaint()
+    })
+
+    const unsubscribeRestore = window.electronAPI?.onRestored?.(() => {
+      console.log('[Renderer] Window restored, triggering repaint')
+      forceRepaint()
+    })
+
+    // GPU 프로세스 복구 시 repaint
+    const unsubscribeGPU = window.electronAPI?.onGPURecovered?.(() => {
+      console.log('[Renderer] GPU recovered, triggering repaint')
+      forceRepaint()
+    })
+
+    // 메모리 압박 시 정리 작업
+    const unsubscribeMemory = window.electronAPI?.onMemoryPressure?.(() => {
+      console.warn('[Renderer] Memory pressure detected, cleaning up...')
+      // 이미지 캐시 정리 시도
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name))
+        })
+      }
+      // GC 힌트 (효과는 브라우저에 따라 다름)
+      setForceUpdate(0)
+    })
+
+    // visibilitychange 이벤트로도 복구 시도
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[Renderer] Visibility changed to visible, triggering repaint')
+        // 약간의 지연 후 repaint (GPU 컨텍스트 복구 시간 확보)
+        setTimeout(forceRepaint, 100)
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      unsubscribeFocus?.()
+      unsubscribeRestore?.()
+      unsubscribeGPU?.()
+      unsubscribeMemory?.()
+      document.removeEventListener('visibilitychange', handleVisibilityChange)
+    }
+  }, [])
+}
 
 // URL 쿼리 파라미터에서 창 타입 가져오기
 function getWindowType(): 'main' | 'tasks' | 'history' | 'memo' | 'schedule' {
@@ -83,6 +148,9 @@ function ReminderWrapper({ children }: { children: React.ReactNode }) {
 
 // 메인 앱 컴포넌트
 function MainApp() {
+  // GPU 컨텍스트 복구 훅 활성화
+  useGPUContextRecovery()
+
   const tabs = [
     {
       id: 'relax',

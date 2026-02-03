@@ -60,14 +60,9 @@ export function EventProvider({ children }: EventProviderProps) {
     return DEFAULT_REMINDER_SETTINGS
   })
 
-  // localStorage 동기화
+  // localStorage 동기화 (다른 탭/창에서 자동으로 storage 이벤트 수신)
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, serializeEvents(events))
-    // 다른 창에 변경 알림 (storage 이벤트는 같은 창에서는 발생하지 않으므로 수동 트리거)
-    window.dispatchEvent(new StorageEvent('storage', {
-      key: STORAGE_KEY,
-      newValue: serializeEvents(events),
-    }))
   }, [events])
 
   useEffect(() => {
@@ -124,11 +119,6 @@ export function EventProvider({ children }: EventProviderProps) {
       const updated = [...prev, newEvent].sort((a, b) => a.startTime - b.startTime)
       // 즉시 localStorage에 저장 (창이 닫히기 전에 동기화 보장)
       localStorage.setItem(STORAGE_KEY, serializeEvents(updated))
-      // 다른 창에 변경 알림
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: STORAGE_KEY,
-        newValue: serializeEvents(updated),
-      }))
       return updated
     })
   }, [])

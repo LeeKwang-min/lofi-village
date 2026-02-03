@@ -8,6 +8,8 @@ interface ElectronAPI {
   platform: NodeJS.Platform
   onRestored: (callback: () => void) => () => void
   onFocused: (callback: () => void) => () => void
+  onGPURecovered: (callback: () => void) => () => void
+  onMemoryPressure: (callback: () => void) => () => void
 }
 
 // 알림 API 타입 정의
