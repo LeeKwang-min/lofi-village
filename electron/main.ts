@@ -1,16 +1,5 @@
-import { app, BrowserWindow, shell, ipcMain, screen, Notification, powerSaveBlocker } from 'electron'
+import { app, BrowserWindow, shell, ipcMain, screen, Notification } from 'electron'
 import { join } from 'path'
-
-// ============================================
-// 백그라운드에서도 오디오/타이머가 멈추지 않도록 설정
-// ============================================
-
-// Chromium 플래그: 백그라운드 렌더러 제한 완전 비활성화
-app.commandLine.appendSwitch('disable-renderer-backgrounding')
-app.commandLine.appendSwitch('disable-background-timer-throttling')
-
-// Power Save Blocker ID (앱 절전 모드 방지)
-let powerSaveBlockerId: number | null = null
 
 // 알림 옵션 타입 정의
 interface NotificationActionOptions {
@@ -63,8 +52,7 @@ function createWindow(): void {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false,
-      backgroundThrottling: false // 백그라운드에서도 오디오/타이머 유지
+      nodeIntegration: false
     }
   })
 
@@ -74,55 +62,6 @@ function createWindow(): void {
     const [windowWidth] = mainWindow!.getSize()
     mainWindow?.setPosition(screenWidth - windowWidth, 0)
     mainWindow?.show()
-  })
-
-  // ============================================
-  // 렌더러 프로세스 상태 관리 (흰 화면 방지)
-  // ============================================
-
-  // 렌더러 크래시 시 자동 복구
-  mainWindow.webContents.on('crashed', (_event, killed) => {
-    console.error('Renderer crashed, killed:', killed)
-    // 크래시 후 자동으로 페이지 다시 로드
-    setTimeout(() => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.reload()
-      }
-    }, 500)
-  })
-
-  // 렌더러가 응답하지 않을 때 처리
-  mainWindow.webContents.on('unresponsive', () => {
-    console.warn('Renderer became unresponsive')
-  })
-
-  // 렌더러가 다시 응답할 때
-  mainWindow.webContents.on('responsive', () => {
-    console.log('Renderer became responsive again')
-  })
-
-  // 창이 복원될 때 (최소화에서 돌아올 때) 렌더러 상태 확인
-  mainWindow.on('restore', () => {
-    // 렌더러가 정상인지 확인하고 필요시 리로드
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.executeJavaScript('document.body !== null')
-        .catch(() => {
-          console.warn('Renderer may be in bad state, reloading...')
-          mainWindow?.webContents.reload()
-        })
-    }
-  })
-
-  // 창이 포커스될 때 렌더러 상태 확인
-  mainWindow.on('focus', () => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      // 렌더러가 살아있는지 간단히 체크
-      mainWindow.webContents.executeJavaScript('1')
-        .catch(() => {
-          console.warn('Renderer not responding on focus, reloading...')
-          mainWindow?.webContents.reload()
-        })
-    }
   })
 
   mainWindow.webContents.setWindowOpenHandler((details) => {
@@ -166,8 +105,7 @@ function createOrToggleSubWindow(windowType: SubWindowType): boolean {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: true,
       contextIsolation: true,
-      nodeIntegration: false,
-      backgroundThrottling: false // 백그라운드에서도 오디오 유지
+      nodeIntegration: false
     }
   })
 
@@ -351,10 +289,6 @@ ipcMain.on('subwindow:close-self', (event) => {
 })
 
 app.whenReady().then(() => {
-  // 시스템이 앱을 절전 모드로 전환하지 않도록 차단 (오디오 재생 유지)
-  powerSaveBlockerId = powerSaveBlocker.start('prevent-app-suspension')
-  console.log('Power save blocker started:', powerSaveBlockerId)
-
   createWindow()
 
   app.on('activate', function () {
@@ -363,46 +297,14 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
-  // Power save blocker 해제
-  if (powerSaveBlockerId !== null && powerSaveBlocker.isStarted(powerSaveBlockerId)) {
-    powerSaveBlocker.stop(powerSaveBlockerId)
-    console.log('Power save blocker stopped')
-  }
-
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
 
-// 에러 핸들링 - 렌더러 프로세스 종료 시 복구
-app.on('render-process-gone', (event, webContents, details) => {
+// 에러 핸들링
+app.on('render-process-gone', (_event, _webContents, details) => {
   console.error('Renderer process gone:', details.reason)
-
-  // 메인 윈도우의 렌더러가 종료된 경우 복구 시도
-  if (mainWindow && !mainWindow.isDestroyed() && mainWindow.webContents === webContents) {
-    // clean-exit이 아닌 경우에만 복구 (사용자가 의도적으로 닫은 게 아닐 때)
-    if (details.reason !== 'clean-exit') {
-      console.log('Attempting to reload main window...')
-      setTimeout(() => {
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          if (process.env['ELECTRON_RENDERER_URL']) {
-            mainWindow.loadURL(process.env['ELECTRON_RENDERER_URL'])
-          } else {
-            mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
-          }
-        }
-      }, 1000)
-    }
-  }
-
-  // 서브 윈도우의 렌더러가 종료된 경우 해당 창 닫기
-  for (const [windowType, subWindow] of subWindows.entries()) {
-    if (!subWindow.isDestroyed() && subWindow.webContents === webContents) {
-      console.log(`Closing crashed sub-window: ${windowType}`)
-      subWindow.close()
-      break
-    }
-  }
 })
 
 app.on('child-process-gone', (_event, details) => {
