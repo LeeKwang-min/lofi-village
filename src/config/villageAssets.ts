@@ -83,6 +83,9 @@ export const TILE_ASSETS: BuildingConfig[] = [
 export const ENVIRONMENT_ASSETS: BuildingConfig[] = [
   { id: 'custom_env_01', name: '나무 (이벤트)', layer: 'environment', imagePath: './map/custom/tree.png', cost: 0, description: '자연물' },
   { id: 'custom_env_02', name: '통나무 (이벤트)', layer: 'environment', imagePath: './map/custom/log.PNG', cost: 0, description: '자연물' },
+  { id: 'custom_env_03', name: '모닥불 (이벤트)', layer: 'environment', imagePath: './map/custom/FireSmall.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_04', name: '긴나무 (이벤트)', layer: 'environment', imagePath: './map/custom/TreeLongBasic.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_05', name: '긴꽃나무 (이벤트)', layer: 'environment', imagePath: './map/custom/TreeLongFlower.png', cost: 0, description: '자연물' },
   { id: 'env_01', name: '자연 1', layer: 'environment', imagePath: './map/Environment/medievalEnvironment_01.png', cost: 20, description: '자연물' },
   { id: 'env_02', name: '자연 2', layer: 'environment', imagePath: './map/Environment/medievalEnvironment_02.png', cost: 30, description: '자연물' },
   { id: 'env_03', name: '자연 3', layer: 'environment', imagePath: './map/Environment/medievalEnvironment_03.png', cost: 25, description: '자연물' },
