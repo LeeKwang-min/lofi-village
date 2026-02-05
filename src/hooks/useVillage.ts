@@ -92,23 +92,31 @@ export function useVillage() {
     return true
   }, [state.coins])
 
-  // 아이템 배치 (레이어 시스템)
+  // 아이템 배치 (레이어 시스템) - 같은 카테고리는 대체 가능
   const placeBuilding = useCallback((buildingId: string, position: number): boolean => {
     const building = BUILDINGS.find((b) => b.id === buildingId)
     if (!building) return false
 
-    // 같은 레이어에 이미 아이템이 있는지 확인
-    const isOccupied = state.placedItems.some(
-      (item) => item.position === position && item.layer === building.layer
-    )
-    if (isOccupied) return false
-
     // 구매했는지 확인
     if (!state.unlockedBuildings.includes(buildingId)) return false
 
+    // 같은 레이어에 이미 동일한 아이템이 있는지 확인 (중복 설치 방지)
+    const existingItem = state.placedItems.find(
+      (item) => item.position === position && item.layer === building.layer
+    )
+
+    // 동일한 아이템이 이미 설치되어 있으면 무시
+    if (existingItem && existingItem.buildingId === buildingId) return false
+
     setState((prev) => ({
       ...prev,
-      placedItems: [...prev.placedItems, { buildingId, position, layer: building.layer }],
+      // 같은 레이어의 기존 아이템을 제거하고 새 아이템 추가 (대체)
+      placedItems: [
+        ...prev.placedItems.filter(
+          (item) => !(item.position === position && item.layer === building.layer)
+        ),
+        { buildingId, position, layer: building.layer }
+      ],
     }))
 
     return true

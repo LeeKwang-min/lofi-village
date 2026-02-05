@@ -4,7 +4,7 @@ import { useVillageContext } from '@/contexts/VillageContext'
 import { BUILDINGS, Building, LayerType, getBuildingsByLayer } from '@/hooks/useVillage'
 
 const GRID_COLS = 5
-const GRID_ROWS = 4
+const GRID_ROWS = 5
 
 type EditMode = 'none' | 'add' | 'remove'
 type PanelMode = 'none' | 'shop' | 'inventory'
@@ -34,16 +34,38 @@ export function Village() {
   const [activeLayer, setActiveLayer] = useState<LayerType>('tile')
   const [editMode, setEditMode] = useState<EditMode>('none')
   const [removeLayer, setRemoveLayer] = useState<LayerType>('tile')
+  const [isDragging, setIsDragging] = useState(false)
 
-  // 그리드 셀 클릭 핸들러
-  const handleCellClick = (position: number) => {
+  // 그리드 셀에 아이템 설치 또는 삭제
+  const handleCellAction = (position: number) => {
     if (editMode === 'add' && selectedBuilding) {
-      // 설치 모드: 계속 배치 가능
+      // 설치 모드: 계속 배치 가능 (같은 카테고리는 대체됨)
       placeBuilding(selectedBuilding.id, position)
     } else if (editMode === 'remove') {
       // 삭제 모드: 선택한 레이어의 아이템 삭제
       removeItem(position, removeLayer)
     }
+  }
+
+  // 마우스 다운 - 드래그 시작
+  const handleCellMouseDown = (e: React.MouseEvent, position: number) => {
+    e.preventDefault() // 브라우저 기본 드래그 동작 방지
+    if (editMode === 'add' || editMode === 'remove') {
+      setIsDragging(true)
+      handleCellAction(position)
+    }
+  }
+
+  // 마우스 엔터 - 드래그 중 셀 위를 지나갈 때
+  const handleCellMouseEnter = (position: number) => {
+    if (isDragging && (editMode === 'add' || editMode === 'remove')) {
+      handleCellAction(position)
+    }
+  }
+
+  // 마우스 업 - 드래그 종료
+  const handleMouseUp = () => {
+    setIsDragging(false)
   }
 
   // 건물 구매 핸들러 (상점에서 구매만)
@@ -112,11 +134,13 @@ export function Village() {
 
       {/* 마을 그리드 - 레이어 시스템 (여백 제거, overflow 허용) */}
       <div
-        className="grid relative p-2 mb-3 rounded-lg border border-surface-hover bg-background/50"
+        className="grid relative p-2 mb-3 rounded-lg border border-surface-hover bg-background/50 select-none"
         style={{
           gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`,
           gap: 0
         }}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
       >
         {Array.from({ length: GRID_COLS * GRID_ROWS }).map((_, index) => {
           const items = getItemsAt(index)
@@ -126,7 +150,9 @@ export function Village() {
           return (
             <button
               key={index}
-              onClick={() => handleCellClick(index)}
+              onMouseDown={(e) => handleCellMouseDown(e, index)}
+              onMouseEnter={() => handleCellMouseEnter(index)}
+              onDragStart={(e) => e.preventDefault()}
               className={`relative aspect-square transition-all duration-150 ${editMode === 'add' ? 'cursor-copy hover:brightness-125' : ''} ${editMode === 'remove' ? 'cursor-pointer hover:brightness-75' : ''} ${editMode === 'none' ? 'cursor-default' : ''} `}
               style={{
                 backgroundColor: '#c8d5b9', // 밝은 초록빛 잔디색
@@ -138,6 +164,7 @@ export function Village() {
                 <img
                   src={items.tile.imagePath}
                   alt={items.tile.name}
+                  draggable={false}
                   className="object-cover absolute inset-0 w-full h-full"
                   style={{ zIndex: 0 }}
                 />
@@ -146,6 +173,7 @@ export function Village() {
                 <img
                   src={items.environment.imagePath}
                   alt={items.environment.name}
+                  draggable={false}
                   className="object-contain absolute w-full pointer-events-none"
                   style={{
                     zIndex: 1,
@@ -161,6 +189,7 @@ export function Village() {
                 <img
                   src={items.structure.imagePath}
                   alt={items.structure.name}
+                  draggable={false}
                   className="object-contain absolute w-full pointer-events-none"
                   style={{
                     zIndex: 2,
@@ -176,6 +205,7 @@ export function Village() {
                 <img
                   src={items.unit.imagePath}
                   alt={items.unit.name}
+                  draggable={false}
                   className="object-contain absolute w-full pointer-events-none"
                   style={{
                     zIndex: 3,
