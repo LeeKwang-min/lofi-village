@@ -17,7 +17,7 @@ export interface BuildingConfig {
 // ==================== TILES (바닥) ====================
 // 가격: 5~20 코인
 export const TILE_ASSETS: BuildingConfig[] = [
-  { id: 'custom_tile_01', name: '바닥 (이벤트)', layer: 'tile', imagePath: './map/custom/grass.png', cost: 0, description: '바닥 타일' },
+  { id: 'custom_tile_01', name: '바닥', layer: 'tile', imagePath: './map/custom/grass.png', cost: 0, description: '바닥 타일' },
   { id: 'tile_01', name: '바닥 1', layer: 'tile', imagePath: './map/Tile/medievalTile_01.png', cost: 5, description: '바닥 타일' },
   { id: 'tile_02', name: '바닥 2', layer: 'tile', imagePath: './map/Tile/medievalTile_02.png', cost: 5, description: '바닥 타일' },
   { id: 'tile_03', name: '바닥 3', layer: 'tile', imagePath: './map/Tile/medievalTile_03.png', cost: 5, description: '바닥 타일' },
@@ -81,14 +81,19 @@ export const TILE_ASSETS: BuildingConfig[] = [
 // ==================== ENVIRONMENT (자연) ====================
 // 가격: 8~35 코인
 export const ENVIRONMENT_ASSETS: BuildingConfig[] = [
-  { id: 'custom_env_01', name: '나무 (이벤트)', layer: 'environment', imagePath: './map/custom/tree.png', cost: 0, description: '자연물' },
-  { id: 'custom_env_02', name: '통나무 (이벤트)', layer: 'environment', imagePath: './map/custom/log.PNG', cost: 0, description: '자연물' },
-  { id: 'custom_env_03', name: '모닥불 (이벤트)', layer: 'environment', imagePath: './map/custom/FireSmall.png', cost: 0, description: '자연물' },
-  { id: 'custom_env_04', name: '긴나무 (이벤트)', layer: 'environment', imagePath: './map/custom/TreeLongBasic.png', cost: 0, description: '자연물' },
-  { id: 'custom_env_05', name: '긴꽃나무 (이벤트)', layer: 'environment', imagePath: './map/custom/TreeLongFlower.png', cost: 0, description: '자연물' },
-  { id: 'custom_env_06', name: '잔디 (이벤트)', layer: 'environment', imagePath: './map/custom/BushBasic.png', cost: 0, description: '자연물' },
-  { id: 'custom_env_07', name: '꽃잔디 (이벤트)', layer: 'environment', imagePath: './map/custom/BushFlowerPink.png', cost: 0, description: '자연물' },
-  { id: 'custom_env_08', name: '꽃잔디2 (이벤트)', layer: 'environment', imagePath: './map/custom/BushFlowerYellow.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_01', name: '나무', layer: 'environment', imagePath: './map/custom/tree.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_02', name: '통나무', layer: 'environment', imagePath: './map/custom/log.PNG', cost: 0, description: '자연물' },
+  { id: 'custom_env_03', name: '모닥불', layer: 'environment', imagePath: './map/custom/FireSmall.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_04', name: '긴나무', layer: 'environment', imagePath: './map/custom/TreeLongBasic.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_05', name: '긴꽃나무', layer: 'environment', imagePath: './map/custom/TreeLongFlower.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_06', name: '잔디', layer: 'environment', imagePath: './map/custom/BushBasic.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_07', name: '꽃잔디', layer: 'environment', imagePath: './map/custom/BushFlowerPink.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_08', name: '꽃잔디2', layer: 'environment', imagePath: './map/custom/BushFlowerYellow.png', cost: 0, description: '자연물' },
+  { id: 'custom_env_09', name: '통나무', layer: 'environment', imagePath: './map/custom/LugBasic.PNG', cost: 0, description: '자연물' },
+  { id: 'custom_env_10', name: '통나무 오리', layer: 'environment', imagePath: './map/custom/LugDuck.PNG', cost: 0, description: '자연물' },
+  { id: 'custom_env_11', name: '사과나무', layer: 'environment', imagePath: './map/custom/SphereTreeApple.PNG', cost: 0, description: '자연물' },
+  { id: 'custom_env_12', name: '둥근나무', layer: 'environment', imagePath: './map/custom/SphereTreeBasic.PNG', cost: 0, description: '자연물' },
+  { id: 'custom_env_13', name: '둥근나무 - 핑크', layer: 'environment', imagePath: './map/custom/SphereTreePink.PNG', cost: 0, description: '자연물' },
   { id: 'env_01', name: '자연 1', layer: 'environment', imagePath: './map/Environment/medievalEnvironment_01.png', cost: 20, description: '자연물' },
   { id: 'env_02', name: '자연 2', layer: 'environment', imagePath: './map/Environment/medievalEnvironment_02.png', cost: 30, description: '자연물' },
   { id: 'env_03', name: '자연 3', layer: 'environment', imagePath: './map/Environment/medievalEnvironment_03.png', cost: 25, description: '자연물' },
@@ -143,7 +148,7 @@ export const STRUCTURE_ASSETS: BuildingConfig[] = [
 // ==================== UNITS (유닛) ====================
 // 가격: 30~200 코인
 export const UNIT_ASSETS: BuildingConfig[] = [
-  { id: 'custom_unit_01', name: '여자 (이벤트)', layer: 'unit', imagePath: './map/custom/woman.png', cost: 0, description: '유닛' },
+  { id: 'custom_unit_01', name: '여자', layer: 'unit', imagePath: './map/custom/woman.png', cost: 0, description: '유닛' },
   { id: 'unit_01', name: '유닛 1', layer: 'unit', imagePath: './map/Unit/medievalUnit_01.png', cost: 30, description: '유닛' },
   { id: 'unit_02', name: '유닛 2', layer: 'unit', imagePath: './map/Unit/medievalUnit_02.png', cost: 30, description: '유닛' },
   { id: 'unit_03', name: '유닛 3', layer: 'unit', imagePath: './map/Unit/medievalUnit_03.png', cost: 35, description: '유닛' },
