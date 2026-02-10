@@ -48,9 +48,9 @@ export const LOFI_CHANNELS: SoundChannel[] = [
   { id: 'lofi1', name: 'Acoustic 1', emoji: '🎸', src: './sounds/lofi_acoustic1.mp3' },
   { id: 'lofi2', name: 'Acoustic 2', emoji: '🎸', src: './sounds/lofi_acoustic2.mp3' },
   { id: 'lofi3', name: 'Acoustic 3', emoji: '🎸', src: './sounds/lofi_acoustic3.mp3' },
-  { id: 'lofi4', name: 'Cill 1', emoji: '🍵', src: './sounds/lofi_cill1.mp3' },
-  { id: 'lofi5', name: 'Cill 2', emoji: '🍵', src: './sounds/lofi_cill2.mp3' },
-  { id: 'lofi6', name: 'Cill 3', emoji: '🍵', src: './sounds/lofi_cill3.mp3' },
+  { id: 'lofi4', name: 'Chill 1', emoji: '🍵', src: './sounds/lofi_chill1.mp3' },
+  { id: 'lofi5', name: 'Chill 2', emoji: '🍵', src: './sounds/lofi_chill2.mp3' },
+  { id: 'lofi6', name: 'Chill 3', emoji: '🍵', src: './sounds/lofi_chill3.mp3' },
   { id: 'lofi7', name: 'City 1', emoji: '🏙️', src: './sounds/lofi_city1.mp3' },
   { id: 'lofi8', name: 'City 2', emoji: '🏙️', src: './sounds/lofi_city2.mp3' },
   { id: 'lofi9', name: 'City 3', emoji: '🏙️', src: './sounds/lofi_city3.mp3' }
