@@ -53,7 +53,9 @@ export const LOFI_CHANNELS: SoundChannel[] = [
   { id: 'lofi6', name: 'Chill 3', emoji: '🍵', src: './sounds/lofi_chill3.mp3' },
   { id: 'lofi7', name: 'City 1', emoji: '🏙️', src: './sounds/lofi_city1.mp3' },
   { id: 'lofi8', name: 'City 2', emoji: '🏙️', src: './sounds/lofi_city2.mp3' },
-  { id: 'lofi9', name: 'City 3', emoji: '🏙️', src: './sounds/lofi_city3.mp3' }
+  { id: 'lofi9', name: 'City 3', emoji: '🏙️', src: './sounds/lofi_city3.mp3' },
+  { id: 'lofi10', name: 'Korea 1', emoji: '🇰🇷', src: './sounds/lofi_korea1.mp3' },
+  { id: 'lofi11', name: 'Korea 2', emoji: '🇰🇷', src: './sounds/lofi_korea2.mp3' }
 ]
 
 // 🌿 Ambient Sounds (그룹별)

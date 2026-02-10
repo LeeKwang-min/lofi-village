@@ -81,8 +81,8 @@ export const TILE_ASSETS: BuildingConfig[] = [
 // ==================== ENVIRONMENT (자연) ====================
 // 가격: 8~35 코인
 export const ENVIRONMENT_ASSETS: BuildingConfig[] = [
-  { id: 'custom_env_01', name: '나무', layer: 'environment', imagePath: './map/custom/tree.png', cost: 0, description: '자연물' },
-  { id: 'custom_env_02', name: '통나무', layer: 'environment', imagePath: './map/custom/log.PNG', cost: 0, description: '자연물' },
+  // { id: 'custom_env_01', name: '나무', layer: 'environment', imagePath: './map/custom/tree.png', cost: 0, description: '자연물' },
+  // { id: 'custom_env_02', name: '통나무', layer: 'environment', imagePath: './map/custom/log.PNG', cost: 0, description: '자연물' },
   { id: 'custom_env_03', name: '모닥불', layer: 'environment', imagePath: './map/custom/FireSmall.png', cost: 0, description: '자연물' },
   { id: 'custom_env_04', name: '긴나무', layer: 'environment', imagePath: './map/custom/TreeLongBasic.png', cost: 0, description: '자연물' },
   { id: 'custom_env_05', name: '긴꽃나무', layer: 'environment', imagePath: './map/custom/TreeLongFlower.png', cost: 0, description: '자연물' },
@@ -149,6 +149,7 @@ export const STRUCTURE_ASSETS: BuildingConfig[] = [
 // 가격: 30~200 코인
 export const UNIT_ASSETS: BuildingConfig[] = [
   { id: 'custom_unit_01', name: '여자', layer: 'unit', imagePath: './map/custom/woman.png', cost: 0, description: '유닛' },
+  { id: 'custom_unit_02', name: '남자', layer: 'unit', imagePath: './map/custom/man.png', cost: 0, description: '유닛' },
   { id: 'unit_01', name: '유닛 1', layer: 'unit', imagePath: './map/Unit/medievalUnit_01.png', cost: 30, description: '유닛' },
   { id: 'unit_02', name: '유닛 2', layer: 'unit', imagePath: './map/Unit/medievalUnit_02.png', cost: 30, description: '유닛' },
   { id: 'unit_03', name: '유닛 3', layer: 'unit', imagePath: './map/Unit/medievalUnit_03.png', cost: 35, description: '유닛' },
@@ -196,6 +197,16 @@ export const getAssetsByLayer = (layer: LayerType): BuildingConfig[] => {
       return UNIT_ASSETS
     default:
       return []
+  }
+}
+
+// 레이어별 기본 지급 수량
+export function getDefaultQuantity(layer: LayerType): number {
+  switch (layer) {
+    case 'tile': return 25
+    case 'environment': return 5
+    case 'structure': return 1
+    case 'unit': return 1
   }
 }
 
