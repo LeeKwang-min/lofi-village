@@ -26,6 +26,10 @@ interface UseScheduleTimerReturn {
   pendingItems: ScheduleItem[]
   queueStats: QueueStats
 
+  // 완료 감지 (알림 트리거용)
+  lastCompletedItem: ScheduleItem | null
+  clearLastCompleted: () => void
+
   // 타이머 제어
   start: () => void
   pause: () => void
@@ -53,6 +57,7 @@ export function useScheduleTimer(options: UseScheduleTimerOptions = {}): UseSche
   const [currentItem, setCurrentItem] = useState<ScheduleItem | null>(null)
   const [nextItem, setNextItem] = useState<ScheduleItem | null>(null)
   const [pendingItems, setPendingItems] = useState<ScheduleItem[]>([])
+  const [lastCompletedItem, setLastCompletedItem] = useState<ScheduleItem | null>(null)
   const [queueStats, setQueueStats] = useState<QueueStats>({
     totalItems: 0,
     pendingItems: 0,
@@ -100,8 +105,12 @@ export function useScheduleTimer(options: UseScheduleTimerOptions = {}): UseSche
     clearTimer()
 
     const completedItem = scheduleQueueService.completeCurrent()
+    // completeCurrent()이 'item-completed' 이벤트를 발행하므로
+    // onItemComplete는 이벤트 구독에서 자동 호출됨 (직접 호출 불필요)
+
+    // 완료된 아이템을 상태로 노출 (알림 트리거용)
     if (completedItem) {
-      onItemCompleteRef.current?.(completedItem)
+      setLastCompletedItem(completedItem)
     }
 
     syncQueueState()
@@ -272,6 +281,8 @@ export function useScheduleTimer(options: UseScheduleTimerOptions = {}): UseSche
     }
   }, [clearTimer, syncQueueState])
 
+  const clearLastCompleted = useCallback(() => setLastCompletedItem(null), [])
+
   return {
     // 타이머 상태
     timeLeft,
@@ -283,6 +294,10 @@ export function useScheduleTimer(options: UseScheduleTimerOptions = {}): UseSche
     nextItem,
     pendingItems,
     queueStats,
+
+    // 완료 감지 (알림 트리거용)
+    lastCompletedItem,
+    clearLastCompleted,
 
     // 타이머 제어
     start,

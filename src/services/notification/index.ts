@@ -55,11 +55,15 @@ export async function sendAlert(options: AlertOptions): Promise<void> {
 
   // Electron 알림 표시
   if (showNotification) {
-    await notificationService.show({
-      title: message.title,
-      body: message.body,
-      actions
-    })
+    try {
+      await notificationService.show({
+        title: message.title,
+        body: message.body,
+        actions
+      })
+    } catch (error) {
+      console.warn('알림 표시 실패:', error)
+    }
   }
 
   // TTS 재생

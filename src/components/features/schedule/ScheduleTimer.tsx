@@ -18,6 +18,8 @@ export function ScheduleTimer() {
     progress,
     currentItem,
     nextItem,
+    lastCompletedItem,
+    clearLastCompleted,
     start,
     pause,
     reset,
@@ -27,7 +29,6 @@ export function ScheduleTimer() {
 
   const [showReward, setShowReward] = useState(false)
   const [lastReward, setLastReward] = useState(0)
-  const [pendingNotification, setPendingNotification] = useState<'focus' | 'break' | null>(null)
 
   // 현재 모드 결정 (currentItem 또는 nextItem 기준)
   const activeItem = currentItem || nextItem
@@ -71,35 +72,23 @@ export function ScheduleTimer() {
     onAction: handleNotificationAction,
   })
 
-  // 완료 감지 및 보상 표시
+  // 완료 감지: lastCompletedItem이 설정되면 알림 + 보상 처리
   useEffect(() => {
-    if (timeLeft === 0 && status === 'idle' && currentItem === null && activeItem) {
-      // 일정이 완료됨
-      if (!isFocus) {
-        // 이전 아이템이 집중이었다면 (지금 break로 전환된 상태)
-        setPendingNotification('focus')
-      } else {
-        setPendingNotification('break')
-      }
-    }
-  }, [timeLeft, status, currentItem, activeItem, isFocus])
+    if (!lastCompletedItem) return
 
-  // 보류된 알림 처리
-  useEffect(() => {
-    if (pendingNotification === 'focus') {
+    if (lastCompletedItem.type === 'focus') {
       notifyFocusComplete()
       // 보상 애니메이션 표시
-      if (activeItem) {
-        const reward = Math.floor((activeItem.durationMinutes / 30) * FOCUS_REWARD_PER_30MIN)
-        setLastReward(reward)
-        setShowReward(true)
-        setTimeout(() => setShowReward(false), 2000)
-      }
-    } else if (pendingNotification === 'break') {
+      const reward = Math.floor((lastCompletedItem.durationMinutes / 30) * FOCUS_REWARD_PER_30MIN)
+      setLastReward(reward)
+      setShowReward(true)
+      setTimeout(() => setShowReward(false), 2000)
+    } else {
       notifyBreakComplete()
     }
-    setPendingNotification(null)
-  }, [pendingNotification, notifyFocusComplete, notifyBreakComplete, activeItem])
+
+    clearLastCompleted()
+  }, [lastCompletedItem, notifyFocusComplete, notifyBreakComplete, clearLastCompleted])
 
   // 타이틀 결정
   const title = activeItem?.title || (isFocus ? '집중 타이머' : '휴식 시간')
