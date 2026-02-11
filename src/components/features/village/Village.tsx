@@ -47,6 +47,8 @@ function BuildingImage({
           backgroundSize: `${frames * 100}% 100%`,
           backgroundPosition: '0 0',
           backgroundRepeat: 'no-repeat',
+          // 서브픽셀 렌더링 갭 방지: 셀보다 살짝 크게 렌더링
+          transform: 'scale(1.01)',
           ...(animated ? {
             '--sprite-offset': `${(frames * 100) / (frames - 1)}%`,
             animation: `spriteAnimate ${frames * 400}ms steps(${frames}) infinite`,
