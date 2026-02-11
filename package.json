@@ -1,6 +1,6 @@
 {
   "name": "lofi-village",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Cozy lofi music player with focus timer and village building rewards",
   "main": "./out/main/index.js",
   "type": "module",
