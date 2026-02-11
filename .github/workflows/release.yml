@@ -27,9 +27,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: mac-builds
-          path: |
-            release/*.dmg
-            release/*.zip
+          path: release/*.dmg
           retention-days: 1
 
   build-win:
@@ -50,8 +48,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: win-builds
-          path: |
-            release/*.exe
+          path: release/*Setup*.exe
           retention-days: 1
 
   release:
