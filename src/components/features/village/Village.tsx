@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import {
   Coins,
   Store,
@@ -10,7 +10,8 @@ import {
   FlipVertical2,
   RotateCcw,
   ChevronUp,
-  ChevronDown
+  ChevronDown,
+  Undo2
 } from 'lucide-react'
 import { useVillageContext } from '@/contexts/VillageContext'
 import { Building, LayerType, getBuildingsByLayer, PlacedItem } from '@/hooks/useVillage'
@@ -114,7 +115,11 @@ export function Village() {
     getItemsAt,
     getOwnedQuantity,
     getRemainingQuantity,
-    getFreePlacedItems
+    getFreePlacedItems,
+    pushUndoSnapshot,
+    undo,
+    clearUndoHistory,
+    canUndo
   } = useVillageContext()
 
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
@@ -129,6 +134,23 @@ export function Village() {
   const mapRef = useRef<HTMLDivElement>(null)
 
   const freePlacedItems = getFreePlacedItems()
+
+  // 마운트 시 undo 히스토리 초기화
+  useEffect(() => {
+    clearUndoHistory()
+  }, [clearUndoHistory])
+
+  // Cmd+Z / Ctrl+Z 키보드 단축키
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault()
+        undo()
+      }
+    }
+    window.addEventListener('keydown', handler)
+    return () => window.removeEventListener('keydown', handler)
+  }, [undo])
 
   // 선택된 배치 아이템 정보
   const selectedPlacedItem = selectedPlacedItemId
@@ -146,6 +168,7 @@ export function Village() {
   const handleCellMouseDown = (e: React.MouseEvent, position: number) => {
     e.preventDefault()
     if (editMode === 'add') {
+      pushUndoSnapshot()
       setIsTileDragging(true)
       handleCellAction(position)
     }
@@ -190,6 +213,7 @@ export function Village() {
       e.preventDefault()
       e.stopPropagation()
 
+      pushUndoSnapshot()
       const rect = mapRef.current.getBoundingClientRect()
       let moved = false
       setDraggingItemId(itemId)
@@ -214,23 +238,26 @@ export function Village() {
       document.addEventListener('mousemove', onMouseMove)
       document.addEventListener('mouseup', onMouseUp)
     },
-    [updateItem]
+    [updateItem, pushUndoSnapshot]
   )
 
   // 선택된 아이템 반전 토글
   const toggleSelectedFlipX = () => {
     if (!selectedPlacedItem) return
+    pushUndoSnapshot()
     updateItem(selectedPlacedItem.id, { flipX: !selectedPlacedItem.flipX })
   }
 
   const toggleSelectedFlipY = () => {
     if (!selectedPlacedItem) return
+    pushUndoSnapshot()
     updateItem(selectedPlacedItem.id, { flipY: !selectedPlacedItem.flipY })
   }
 
   // 선택된 아이템 크기 조절
   const adjustSelectedScale = (delta: number) => {
     if (!selectedPlacedItem) return
+    pushUndoSnapshot()
     const next =
       Math.round(Math.max(0.5, Math.min(2.0, selectedPlacedItem.scale + delta)) * 10) / 10
     updateItem(selectedPlacedItem.id, { scale: next })
@@ -257,6 +284,7 @@ export function Village() {
       setEditMode('add')
     } else {
       // 비타일: 타일 설치 모드 해제 + 즉시 배치 + 자동 선택
+      pushUndoSnapshot()
       setEditMode('none')
       setSelectedBuilding(null)
       const defaultScale = building.layer === 'unit' ? 1.5 : 1
@@ -294,6 +322,7 @@ export function Village() {
   // 선택된 아이템 삭제
   const deleteSelectedItem = () => {
     if (!selectedPlacedItemId) return
+    pushUndoSnapshot()
     removeItem(selectedPlacedItemId)
     setSelectedPlacedItemId(null)
   }
@@ -301,6 +330,7 @@ export function Village() {
   // 초기화 (confirm 포함)
   const handleReset = () => {
     if (window.confirm('마을의 모든 배치된 아이템을 삭제하시겠습니까?')) {
+      pushUndoSnapshot()
       clearAllItems()
       setSelectedPlacedItemId(null)
     }
@@ -328,7 +358,15 @@ export function Village() {
           <span className="text-xl">🏘️</span>
           <h2 className="text-sm font-semibold text-text-primary">나의 마을</h2>
         </div>
-        <div className="flex gap-3 items-center">
+        <div className="flex gap-2 items-center">
+          <button
+            onClick={() => undo()}
+            disabled={!canUndo}
+            className="p-1 rounded transition-colors text-text-secondary hover:bg-surface-hover hover:text-text-primary disabled:opacity-30 disabled:cursor-not-allowed"
+            title="되돌리기 (Ctrl+Z)"
+          >
+            <Undo2 size={14} />
+          </button>
           <span className="text-xs text-warm">Lv. {level}</span>
           <div className="flex gap-1 items-center px-2 py-1 rounded-full bg-yellow-500/20">
             <Coins size={12} className="text-yellow-500" />
@@ -482,7 +520,7 @@ export function Village() {
               </div>
               <div className="flex items-center gap-0.5 rounded bg-surface-hover px-1 py-0.5">
                 <button
-                  onClick={() => sendBackward(selectedPlacedItem.id)}
+                  onClick={() => { pushUndoSnapshot(); sendBackward(selectedPlacedItem.id) }}
                   disabled={
                     freePlacedItems.length < 2 ||
                     selectedPlacedItem.zOrder <=
@@ -494,7 +532,7 @@ export function Village() {
                   <ChevronDown size={12} />
                 </button>
                 <button
-                  onClick={() => bringForward(selectedPlacedItem.id)}
+                  onClick={() => { pushUndoSnapshot(); bringForward(selectedPlacedItem.id) }}
                   disabled={
                     freePlacedItems.length < 2 ||
                     selectedPlacedItem.zOrder >=

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { nanoid } from 'nanoid'
 import { ALL_BUILDINGS, getAssetsByLayer, BuildingConfig, getDefaultQuantity } from '@/config/villageAssets'
 
@@ -124,8 +124,16 @@ function saveVillageState(state: VillageState): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
 }
 
+const MAX_UNDO = 50
+
 export function useVillage() {
   const [state, setState] = useState<VillageState>(loadVillageState)
+
+  // Undo 히스토리 (세션 한정 — localStorage에 저장하지 않음)
+  const undoHistoryRef = useRef<PlacedItem[][]>([])
+  const [undoStackSize, setUndoStackSize] = useState(0)
+  const stateRef = useRef(state)
+  stateRef.current = state
 
   // 상태 변경 시 localStorage에 저장
   useEffect(() => {
@@ -373,6 +381,31 @@ export function useVillage() {
       .sort((a, b) => a.zOrder - b.zOrder)
   }, [state.placedItems])
 
+  // --- Undo 기능 ---
+  const pushUndoSnapshot = useCallback(() => {
+    const snapshot = stateRef.current.placedItems.map(item => ({ ...item }))
+    undoHistoryRef.current.push(snapshot)
+    if (undoHistoryRef.current.length > MAX_UNDO) {
+      undoHistoryRef.current.shift()
+    }
+    setUndoStackSize(undoHistoryRef.current.length)
+  }, [])
+
+  const undo = useCallback((): boolean => {
+    const snapshot = undoHistoryRef.current.pop()
+    if (!snapshot) return false
+    setUndoStackSize(undoHistoryRef.current.length)
+    setState(prev => ({ ...prev, placedItems: snapshot }))
+    return true
+  }, [])
+
+  const clearUndoHistory = useCallback(() => {
+    undoHistoryRef.current = []
+    setUndoStackSize(0)
+  }, [])
+
+  const canUndo = undoStackSize > 0
+
   // 레벨 계산
   const level = Math.floor(state.totalFocusMinutes / 60) + 1
 
@@ -396,5 +429,9 @@ export function useVillage() {
     getOwnedQuantity,
     getRemainingQuantity,
     getFreePlacedItems,
+    pushUndoSnapshot,
+    undo,
+    clearUndoHistory,
+    canUndo,
   }
 }
