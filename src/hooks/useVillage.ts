@@ -21,6 +21,7 @@ export interface PlacedItem {
   flipX: boolean      // 좌우 반전
   flipY: boolean      // 상하 반전
   scale: number       // 크기 배율 (0.5 ~ 2.0)
+  zOrder: number      // 배치 순서 (높을수록 앞에 표시)
 }
 
 // 마을 상태
@@ -89,8 +90,9 @@ function migrateState(raw: LegacyState): VillageState {
     }
   }
 
-  // placedItems 마이그레이션: id, flipX/flipY 필드 보장
+  // placedItems 마이그레이션: id, flipX/flipY, zOrder 필드 보장
   if (raw.placedItems) {
+    let nextZOrder = 0
     state.placedItems = raw.placedItems.map(item => ({
       id: item.id || nanoid(),
       buildingId: item.buildingId,
@@ -101,6 +103,7 @@ function migrateState(raw: LegacyState): VillageState {
       flipX: item.flipX ?? false,
       flipY: item.flipY ?? false,
       scale: item.scale ?? 1,
+      zOrder: (item as { zOrder?: number }).zOrder ?? nextZOrder++,
     }))
   }
 
@@ -217,6 +220,7 @@ export function useVillage() {
             flipX: options.flipX ?? false,
             flipY: options.flipY ?? false,
             scale: options.scale ?? 1,
+            zOrder: 0,
           },
         ],
       }))
@@ -224,22 +228,26 @@ export function useVillage() {
       // 자유 배치
       if (options.x === undefined || options.y === undefined) return null
 
-      setState((prev) => ({
-        ...prev,
-        placedItems: [
-          ...prev.placedItems,
-          {
-            id: newId,
-            buildingId,
-            layer: building.layer,
-            x: options.x!,
-            y: options.y!,
-            flipX: options.flipX ?? false,
-            flipY: options.flipY ?? false,
-            scale: options.scale ?? 1,
-          },
-        ],
-      }))
+      setState((prev) => {
+        const maxZOrder = Math.max(0, ...prev.placedItems.map(i => i.zOrder))
+        return {
+          ...prev,
+          placedItems: [
+            ...prev.placedItems,
+            {
+              id: newId,
+              buildingId,
+              layer: building.layer,
+              x: options.x!,
+              y: options.y!,
+              flipX: options.flipX ?? false,
+              flipY: options.flipY ?? false,
+              scale: options.scale ?? 1,
+              zOrder: maxZOrder + 1,
+            },
+          ],
+        }
+      })
     }
 
     return newId
@@ -264,6 +272,54 @@ export function useVillage() {
         item.id === itemId ? { ...item, ...updates } : item
       ),
     }))
+  }, [])
+
+  // zOrder 순서 변경: 앞으로 당기기 (zOrder 높이기)
+  const bringForward = useCallback((itemId: string) => {
+    setState(prev => {
+      const target = prev.placedItems.find(i => i.id === itemId)
+      if (!target || target.layer === 'tile') return prev
+
+      // 현재 아이템보다 zOrder가 큰 것 중 가장 작은 것 찾기
+      const nextAbove = prev.placedItems
+        .filter(i => i.layer !== 'tile' && i.zOrder > target.zOrder)
+        .sort((a, b) => a.zOrder - b.zOrder)[0]
+
+      if (!nextAbove) return prev // 이미 최상위
+
+      return {
+        ...prev,
+        placedItems: prev.placedItems.map(item => {
+          if (item.id === target.id) return { ...item, zOrder: nextAbove.zOrder }
+          if (item.id === nextAbove.id) return { ...item, zOrder: target.zOrder }
+          return item
+        }),
+      }
+    })
+  }, [])
+
+  // zOrder 순서 변경: 뒤로 밀기 (zOrder 낮추기)
+  const sendBackward = useCallback((itemId: string) => {
+    setState(prev => {
+      const target = prev.placedItems.find(i => i.id === itemId)
+      if (!target || target.layer === 'tile') return prev
+
+      // 현재 아이템보다 zOrder가 작은 것 중 가장 큰 것 찾기
+      const nextBelow = prev.placedItems
+        .filter(i => i.layer !== 'tile' && i.zOrder < target.zOrder)
+        .sort((a, b) => b.zOrder - a.zOrder)[0]
+
+      if (!nextBelow) return prev // 이미 최하위
+
+      return {
+        ...prev,
+        placedItems: prev.placedItems.map(item => {
+          if (item.id === target.id) return { ...item, zOrder: nextBelow.zOrder }
+          if (item.id === nextBelow.id) return { ...item, zOrder: target.zOrder }
+          return item
+        }),
+      }
+    })
   }, [])
 
   // 타일 제거 (위치 기반 — 해당 그리드 셀의 타일 삭제)
@@ -305,7 +361,7 @@ export function useVillage() {
     [state.placedItems]
   )
 
-  // 자유 배치된 아이템 목록
+  // 자유 배치된 아이템 목록 (zOrder 오름차순 → 나중에 설치된 아이템이 위에 렌더링)
   const getFreePlacedItems = useCallback((): (PlacedItem & { building: Building })[] => {
     return state.placedItems
       .filter(item => item.layer !== 'tile' && item.x !== undefined && item.y !== undefined)
@@ -314,6 +370,7 @@ export function useVillage() {
         return { ...item, building }
       })
       .filter(item => item.building)
+      .sort((a, b) => a.zOrder - b.zOrder)
   }, [state.placedItems])
 
   // 레벨 계산
@@ -331,6 +388,8 @@ export function useVillage() {
     placeBuilding,
     removeItem,
     updateItem,
+    bringForward,
+    sendBackward,
     removeTileAt,
     clearAllItems,
     getItemsAt,

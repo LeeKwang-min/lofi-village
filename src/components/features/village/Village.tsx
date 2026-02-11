@@ -8,7 +8,9 @@ import {
   Package,
   FlipHorizontal2,
   FlipVertical2,
-  RotateCcw
+  RotateCcw,
+  ChevronUp,
+  ChevronDown
 } from 'lucide-react'
 import { useVillageContext } from '@/contexts/VillageContext'
 import { Building, LayerType, getBuildingsByLayer, PlacedItem } from '@/hooks/useVillage'
@@ -106,6 +108,8 @@ export function Village() {
     placeBuilding,
     removeItem,
     updateItem,
+    bringForward,
+    sendBackward,
     clearAllItems,
     getItemsAt,
     getOwnedQuantity,
@@ -118,10 +122,8 @@ export function Village() {
   const [activeLayer, setActiveLayer] = useState<LayerType>('tile')
   const [editMode, setEditMode] = useState<EditMode>('none')
   const [isTileDragging, setIsTileDragging] = useState(false)
-  const [currentFlipX, setCurrentFlipX] = useState(false)
-  const [currentFlipY, setCurrentFlipY] = useState(false)
-  const [currentScale, setCurrentScale] = useState(1)
   const [selectedPlacedItemId, setSelectedPlacedItemId] = useState<string | null>(null)
+  const [draggingItemId, setDraggingItemId] = useState<string | null>(null)
   const [purchaseTarget, setPurchaseTarget] = useState<Building | null>(null)
   const wasDraggingRef = useRef(false)
   const mapRef = useRef<HTMLDivElement>(null)
@@ -136,12 +138,7 @@ export function Village() {
   // 그리드 셀에 타일 설치
   const handleCellAction = (position: number) => {
     if (editMode === 'add' && selectedBuilding && selectedBuilding.layer === 'tile') {
-      placeBuilding(selectedBuilding.id, {
-        position,
-        flipX: currentFlipX,
-        flipY: currentFlipY,
-        scale: currentScale
-      })
+      placeBuilding(selectedBuilding.id, { position })
     }
   }
 
@@ -173,11 +170,15 @@ export function Village() {
     }
   }
 
-  // 자유 배치 아이템 클릭 → 선택/해제 토글
+  // 자유 배치 아이템 클릭 → 선택/해제 토글 + 타일 설치 모드 해제
   const handleFreeItemClick = (item: PlacedItem & { building: Building }) => {
     if (wasDraggingRef.current) {
       wasDraggingRef.current = false
       return
+    }
+    if (editMode === 'add') {
+      setEditMode('none')
+      setSelectedBuilding(null)
     }
     setSelectedPlacedItemId((prev) => (prev === item.id ? null : item.id))
   }
@@ -191,6 +192,7 @@ export function Village() {
 
       const rect = mapRef.current.getBoundingClientRect()
       let moved = false
+      setDraggingItemId(itemId)
 
       const onMouseMove = (moveEvent: MouseEvent) => {
         moved = true
@@ -203,6 +205,7 @@ export function Village() {
       const onMouseUp = () => {
         document.removeEventListener('mousemove', onMouseMove)
         document.removeEventListener('mouseup', onMouseUp)
+        setDraggingItemId(null)
         if (moved) {
           wasDraggingRef.current = true
         }
@@ -213,21 +216,6 @@ export function Village() {
     },
     [updateItem]
   )
-
-  // 좌우 반전 토글 (타일 전용)
-  const toggleFlipX = () => {
-    setCurrentFlipX((prev) => !prev)
-  }
-
-  // 상하 반전 토글 (타일 전용)
-  const toggleFlipY = () => {
-    setCurrentFlipY((prev) => !prev)
-  }
-
-  // 크기 조절 (타일 전용)
-  const adjustScale = (delta: number) => {
-    setCurrentScale((prev) => Math.round(Math.max(0.5, Math.min(2.0, prev + delta)) * 10) / 10)
-  }
 
   // 선택된 아이템 반전 토글
   const toggleSelectedFlipX = () => {
@@ -267,11 +255,10 @@ export function Village() {
       // 타일: 기존 설치 모드
       setSelectedBuilding(building)
       setEditMode('add')
-      setCurrentFlipX(false)
-      setCurrentFlipY(false)
-      setCurrentScale(1)
     } else {
-      // 비타일: 즉시 배치 + 자동 선택
+      // 비타일: 타일 설치 모드 해제 + 즉시 배치 + 자동 선택
+      setEditMode('none')
+      setSelectedBuilding(null)
       const defaultScale = building.layer === 'unit' ? 1.5 : 1
       const newId = placeBuilding(building.id, {
         x: 50,
@@ -290,9 +277,6 @@ export function Village() {
   const cancelMode = () => {
     setEditMode('none')
     setSelectedBuilding(null)
-    setCurrentFlipX(false)
-    setCurrentFlipY(false)
-    setCurrentScale(1)
   }
 
   // 인벤토리 토글
@@ -415,7 +399,7 @@ export function Village() {
                     'translate(-50%, -100%)'
                   ),
                   width: getFreeItemSize(item.layer),
-                  zIndex: isSelected ? 100 : Math.floor(clamped.y / 10) + 10
+                  zIndex: draggingItemId === item.id ? 100 : item.zOrder + 10
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -496,6 +480,32 @@ export function Village() {
                   +
                 </button>
               </div>
+              <div className="flex items-center gap-0.5 rounded bg-surface-hover px-1 py-0.5">
+                <button
+                  onClick={() => sendBackward(selectedPlacedItem.id)}
+                  disabled={
+                    freePlacedItems.length < 2 ||
+                    selectedPlacedItem.zOrder <=
+                      Math.min(...freePlacedItems.map((i) => i.zOrder))
+                  }
+                  className="p-0.5 text-text-secondary hover:text-text-primary disabled:opacity-30"
+                  title="뒤로 밀기"
+                >
+                  <ChevronDown size={12} />
+                </button>
+                <button
+                  onClick={() => bringForward(selectedPlacedItem.id)}
+                  disabled={
+                    freePlacedItems.length < 2 ||
+                    selectedPlacedItem.zOrder >=
+                      Math.max(...freePlacedItems.map((i) => i.zOrder))
+                  }
+                  className="p-0.5 text-text-secondary hover:text-text-primary disabled:opacity-30"
+                  title="앞으로 당기기"
+                >
+                  <ChevronUp size={12} />
+                </button>
+              </div>
               <button
                 onClick={deleteSelectedItem}
                 className="p-1 text-red-400 rounded transition-colors hover:bg-red-500/20"
@@ -531,55 +541,12 @@ export function Village() {
                 </span>
               )}
             </div>
-            <div className="flex gap-1 items-center">
-              <button
-                onClick={toggleFlipX}
-                className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
-                  currentFlipX
-                    ? 'text-green-400 bg-green-500/20'
-                    : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
-                }`}
-                title="좌우 반전"
-              >
-                <FlipHorizontal2 size={12} />
-              </button>
-              <button
-                onClick={toggleFlipY}
-                className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
-                  currentFlipY
-                    ? 'text-green-400 bg-green-500/20'
-                    : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
-                }`}
-                title="상하 반전"
-              >
-                <FlipVertical2 size={12} />
-              </button>
-              <div className="flex items-center gap-0.5 rounded bg-surface-hover px-1 py-0.5">
-                <button
-                  onClick={() => adjustScale(-0.1)}
-                  disabled={currentScale <= 0.5}
-                  className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-                >
-                  −
-                </button>
-                <span className="w-6 text-center text-[10px] text-text-secondary">
-                  {currentScale.toFixed(1)}
-                </span>
-                <button
-                  onClick={() => adjustScale(0.1)}
-                  disabled={currentScale >= 2.0}
-                  className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-                >
-                  +
-                </button>
-              </div>
-              <button
-                onClick={cancelMode}
-                className="p-1 rounded transition-colors text-text-muted hover:bg-surface-hover hover:text-text-primary"
-              >
-                <X size={16} />
-              </button>
-            </div>
+            <button
+              onClick={cancelMode}
+              className="p-1 rounded transition-colors text-text-muted hover:bg-surface-hover hover:text-text-primary"
+            >
+              <X size={16} />
+            </button>
           </div>
         </div>
       )}
