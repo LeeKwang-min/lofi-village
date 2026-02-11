@@ -120,9 +120,9 @@ export function PomodoroTimer() {
   const isFocus = mode === 'focus'
 
   return (
-    <section className="p-4 rounded-xl border border-surface-hover/50 bg-surface/50">
-      <div className="flex justify-between items-center mb-4">
-        <div className="flex gap-2 items-center">
+    <section className="rounded-xl border border-surface-hover/50 bg-surface/50 p-4">
+      <div className="mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
           <span className="text-xl">{isFocus ? '🎯' : '☕'}</span>
           <h2 className="text-sm font-semibold text-text-primary">
             {isFocus ? '집중 타이머' : '휴식 시간'}
@@ -138,8 +138,8 @@ export function PomodoroTimer() {
       </div>
 
       {/* 프로그레스 링 */}
-      <div className="flex relative justify-center mb-4">
-        <svg className="w-52 h-52 transform -rotate-90">
+      <div className="relative mb-4 flex justify-center">
+        <svg className="h-52 w-52 -rotate-90 transform">
           {/* 배경 원 */}
           <circle
             cx="104"
@@ -166,7 +166,7 @@ export function PomodoroTimer() {
         </svg>
 
         {/* 시간 표시 */}
-        <div className="flex absolute inset-0 flex-col justify-center items-center">
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span
             className={`font-mono text-4xl font-bold ${
               isFocus ? 'text-glow-warm text-warm' : 'text-cool'
@@ -184,18 +184,18 @@ export function PomodoroTimer() {
 
       {/* 보상 알림 */}
       {showReward && (
-        <div className="flex gap-2 justify-center items-center p-2 mb-4 text-yellow-500 rounded-lg animate-pulse bg-yellow-500/20">
+        <div className="mb-4 flex animate-pulse items-center justify-center gap-2 rounded-lg bg-yellow-500/20 p-2 text-yellow-500">
           <Coins size={16} />
           <span className="text-sm font-medium">+{FOCUS_REWARD} 코인 획득!</span>
         </div>
       )}
 
       {/* 컨트롤 버튼 */}
-      <div className="flex gap-2 justify-center">
+      <div className="flex justify-center gap-2">
         {/* 리셋 버튼 */}
         <button
           onClick={reset}
-          className="p-3 rounded-full transition-colors bg-background/50 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+          className="rounded-full bg-background/50 p-3 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
           title="리셋"
         >
           <RotateCcw size={18} />
@@ -217,7 +217,7 @@ export function PomodoroTimer() {
         {/* 스킵 버튼 */}
         <button
           onClick={skip}
-          className="p-3 rounded-full transition-colors bg-background/50 text-text-secondary hover:bg-surface-hover hover:text-text-primary"
+          className="rounded-full bg-background/50 p-3 text-text-secondary transition-colors hover:bg-surface-hover hover:text-text-primary"
           title="스킵"
         >
           <SkipForward size={18} />

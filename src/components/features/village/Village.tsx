@@ -134,6 +134,7 @@ export function Village() {
   const mapRef = useRef<HTMLDivElement>(null)
 
   const freePlacedItems = getFreePlacedItems()
+  const isTileEditMode = editMode === 'add' && selectedBuilding?.layer === 'tile'
 
   // 마운트 시 undo 히스토리 초기화
   useEffect(() => {
@@ -426,7 +427,7 @@ export function Village() {
             return (
               <div
                 key={item.id}
-                className="absolute cursor-pointer pointer-events-auto"
+                className={`absolute ${isTileEditMode ? 'pointer-events-none opacity-60' : 'cursor-pointer pointer-events-auto'}`}
                 style={{
                   left: `${clamped.x}%`,
                   top: `${clamped.y}%`,
