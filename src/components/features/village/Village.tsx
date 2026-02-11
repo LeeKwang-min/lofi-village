@@ -1,5 +1,15 @@
 import { useState, useRef, useCallback } from 'react'
-import { Coins, Store, Pencil, Trash2, X, Package, FlipHorizontal2, FlipVertical2, RotateCcw } from 'lucide-react'
+import {
+  Coins,
+  Store,
+  Pencil,
+  Trash2,
+  X,
+  Package,
+  FlipHorizontal2,
+  FlipVertical2,
+  RotateCcw
+} from 'lucide-react'
 import { useVillageContext } from '@/contexts/VillageContext'
 import { Building, LayerType, getBuildingsByLayer, PlacedItem } from '@/hooks/useVillage'
 import { getDefaultQuantity } from '@/config/villageAssets'
@@ -16,7 +26,7 @@ const PLACE_MAX_Y = 95
 function clampPosition(x: number, y: number) {
   return {
     x: Math.max(PLACE_MIN_X, Math.min(PLACE_MAX_X, x)),
-    y: Math.max(PLACE_MIN_Y, Math.min(PLACE_MAX_Y, y)),
+    y: Math.max(PLACE_MIN_Y, Math.min(PLACE_MAX_Y, y))
   }
 }
 
@@ -28,7 +38,7 @@ function BuildingImage({
   building,
   animated = false,
   className = '',
-  style,
+  style
 }: {
   building: Building
   animated?: boolean
@@ -49,10 +59,12 @@ function BuildingImage({
           backgroundRepeat: 'no-repeat',
           // 서브픽셀 렌더링 갭 방지: 셀보다 살짝 크게 렌더링
           transform: 'scale(1.01)',
-          ...(animated ? {
-            '--sprite-offset': `${(frames * 100) / (frames - 1)}%`,
-            animation: `spriteAnimate ${frames * 400}ms steps(${frames}) infinite`,
-          } as React.CSSProperties : {}),
+          ...(animated
+            ? ({
+                '--sprite-offset': `${(frames * 100) / (frames - 1)}%`,
+                animation: `spriteAnimate ${frames * 800}ms steps(${frames}) infinite`
+              } as React.CSSProperties)
+            : {})
         }}
       />
     )
@@ -98,7 +110,7 @@ export function Village() {
     getItemsAt,
     getOwnedQuantity,
     getRemainingQuantity,
-    getFreePlacedItems,
+    getFreePlacedItems
   } = useVillageContext()
 
   const [selectedBuilding, setSelectedBuilding] = useState<Building | null>(null)
@@ -118,13 +130,18 @@ export function Village() {
 
   // 선택된 배치 아이템 정보
   const selectedPlacedItem = selectedPlacedItemId
-    ? freePlacedItems.find(item => item.id === selectedPlacedItemId) ?? null
+    ? (freePlacedItems.find((item) => item.id === selectedPlacedItemId) ?? null)
     : null
 
   // 그리드 셀에 타일 설치
   const handleCellAction = (position: number) => {
     if (editMode === 'add' && selectedBuilding && selectedBuilding.layer === 'tile') {
-      placeBuilding(selectedBuilding.id, { position, flipX: currentFlipX, flipY: currentFlipY, scale: currentScale })
+      placeBuilding(selectedBuilding.id, {
+        position,
+        flipX: currentFlipX,
+        flipY: currentFlipY,
+        scale: currentScale
+      })
     }
   }
 
@@ -162,51 +179,54 @@ export function Village() {
       wasDraggingRef.current = false
       return
     }
-    setSelectedPlacedItemId(prev => prev === item.id ? null : item.id)
+    setSelectedPlacedItemId((prev) => (prev === item.id ? null : item.id))
   }
 
   // 선택된 아이템 드래그 이동
-  const handleSelectedItemDrag = useCallback((e: React.MouseEvent<HTMLDivElement>, itemId: string) => {
-    if (!mapRef.current) return
-    e.preventDefault()
-    e.stopPropagation()
+  const handleSelectedItemDrag = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>, itemId: string) => {
+      if (!mapRef.current) return
+      e.preventDefault()
+      e.stopPropagation()
 
-    const rect = mapRef.current.getBoundingClientRect()
-    let moved = false
+      const rect = mapRef.current.getBoundingClientRect()
+      let moved = false
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      moved = true
-      const rawX = ((moveEvent.clientX - rect.left) / rect.width) * 100
-      const rawY = ((moveEvent.clientY - rect.top) / rect.height) * 100
-      const { x, y } = clampPosition(rawX, rawY)
-      updateItem(itemId, { x, y })
-    }
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
-      if (moved) {
-        wasDraggingRef.current = true
+      const onMouseMove = (moveEvent: MouseEvent) => {
+        moved = true
+        const rawX = ((moveEvent.clientX - rect.left) / rect.width) * 100
+        const rawY = ((moveEvent.clientY - rect.top) / rect.height) * 100
+        const { x, y } = clampPosition(rawX, rawY)
+        updateItem(itemId, { x, y })
       }
-    }
 
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
-  }, [updateItem])
+      const onMouseUp = () => {
+        document.removeEventListener('mousemove', onMouseMove)
+        document.removeEventListener('mouseup', onMouseUp)
+        if (moved) {
+          wasDraggingRef.current = true
+        }
+      }
+
+      document.addEventListener('mousemove', onMouseMove)
+      document.addEventListener('mouseup', onMouseUp)
+    },
+    [updateItem]
+  )
 
   // 좌우 반전 토글 (타일 전용)
   const toggleFlipX = () => {
-    setCurrentFlipX(prev => !prev)
+    setCurrentFlipX((prev) => !prev)
   }
 
   // 상하 반전 토글 (타일 전용)
   const toggleFlipY = () => {
-    setCurrentFlipY(prev => !prev)
+    setCurrentFlipY((prev) => !prev)
   }
 
   // 크기 조절 (타일 전용)
   const adjustScale = (delta: number) => {
-    setCurrentScale(prev => Math.round(Math.max(0.5, Math.min(2.0, prev + delta)) * 10) / 10)
+    setCurrentScale((prev) => Math.round(Math.max(0.5, Math.min(2.0, prev + delta)) * 10) / 10)
   }
 
   // 선택된 아이템 반전 토글
@@ -223,7 +243,8 @@ export function Village() {
   // 선택된 아이템 크기 조절
   const adjustSelectedScale = (delta: number) => {
     if (!selectedPlacedItem) return
-    const next = Math.round(Math.max(0.5, Math.min(2.0, selectedPlacedItem.scale + delta)) * 10) / 10
+    const next =
+      Math.round(Math.max(0.5, Math.min(2.0, selectedPlacedItem.scale + delta)) * 10) / 10
     updateItem(selectedPlacedItem.id, { scale: next })
   }
 
@@ -252,7 +273,13 @@ export function Village() {
     } else {
       // 비타일: 즉시 배치 + 자동 선택
       const defaultScale = building.layer === 'unit' ? 1.5 : 1
-      const newId = placeBuilding(building.id, { x: 50, y: 50, flipX: false, flipY: false, scale: defaultScale })
+      const newId = placeBuilding(building.id, {
+        x: 50,
+        y: 50,
+        flipX: false,
+        flipY: false,
+        scale: defaultScale
+      })
       if (newId) {
         setSelectedPlacedItemId(newId)
       }
@@ -298,10 +325,14 @@ export function Village() {
   // 자유 배치 아이템의 크기 (레이어별)
   const getFreeItemSize = (layer: LayerType): string => {
     switch (layer) {
-      case 'structure': return '18%'
-      case 'environment': return '14%'
-      case 'unit': return '10%'
-      default: return '12%'
+      case 'structure':
+        return '18%'
+      case 'environment':
+        return '14%'
+      case 'unit':
+        return '10%'
+      default:
+        return '12%'
     }
   }
 
@@ -325,7 +356,7 @@ export function Village() {
       {/* 마을 맵 컨테이너 */}
       <div
         ref={mapRef}
-        className="relative mb-3 rounded-lg border border-surface-hover bg-background/50 select-none overflow-hidden"
+        className="overflow-hidden relative mb-3 rounded-lg border select-none border-surface-hover bg-background/50"
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
@@ -373,13 +404,18 @@ export function Village() {
             return (
               <div
                 key={item.id}
-                className="absolute pointer-events-auto cursor-pointer"
+                className="absolute cursor-pointer pointer-events-auto"
                 style={{
                   left: `${clamped.x}%`,
                   top: `${clamped.y}%`,
-                  transform: itemTransform(item.flipX, item.flipY, item.scale, 'translate(-50%, -100%)'),
+                  transform: itemTransform(
+                    item.flipX,
+                    item.flipY,
+                    item.scale,
+                    'translate(-50%, -100%)'
+                  ),
                   width: getFreeItemSize(item.layer),
-                  zIndex: isSelected ? 100 : Math.floor(clamped.y / 10) + 10,
+                  zIndex: isSelected ? 100 : Math.floor(clamped.y / 10) + 10
                 }}
                 onClick={(e) => {
                   e.stopPropagation()
@@ -399,7 +435,10 @@ export function Village() {
                 />
                 {/* 선택 인디케이터 */}
                 {isSelected && (
-                  <div className="absolute -inset-1 border-2 border-sky-400 border-dashed rounded pointer-events-none" style={{ boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)' }} />
+                  <div
+                    className="absolute -inset-1 rounded border-2 border-sky-400 border-dashed pointer-events-none"
+                    style={{ boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)' }}
+                  />
                 )}
               </div>
             )
@@ -409,19 +448,16 @@ export function Village() {
 
       {/* 선택된 아이템 모드바 */}
       {selectedPlacedItem && (
-        <div className="mb-3 rounded-lg p-2 border border-sky-500/20 bg-sky-500/10">
+        <div className="p-2 mb-3 rounded-lg border border-sky-500/20 bg-sky-500/10">
           <div className="flex justify-between items-center">
             <div className="flex gap-2 items-center">
-              <BuildingImage
-                building={selectedPlacedItem.building}
-                className="w-6 h-6"
-              />
+              <BuildingImage building={selectedPlacedItem.building} className="w-6 h-6" />
               <span className="text-sm text-sky-400">{selectedPlacedItem.building.name}</span>
             </div>
             <div className="flex gap-1 items-center">
               <button
                 onClick={toggleSelectedFlipX}
-                className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
+                className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
                   selectedPlacedItem.flipX
                     ? 'bg-sky-500/20 text-sky-400'
                     : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
@@ -432,7 +468,7 @@ export function Village() {
               </button>
               <button
                 onClick={toggleSelectedFlipY}
-                className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
+                className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
                   selectedPlacedItem.flipY
                     ? 'bg-sky-500/20 text-sky-400'
                     : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
@@ -441,22 +477,28 @@ export function Village() {
               >
                 <FlipVertical2 size={12} />
               </button>
-              <div className="flex gap-0.5 items-center px-1 py-0.5 rounded bg-surface-hover">
+              <div className="flex items-center gap-0.5 rounded bg-surface-hover px-1 py-0.5">
                 <button
                   onClick={() => adjustSelectedScale(-0.1)}
                   disabled={selectedPlacedItem.scale <= 0.5}
                   className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-                >−</button>
-                <span className="text-[10px] text-text-secondary w-6 text-center">{selectedPlacedItem.scale.toFixed(1)}</span>
+                >
+                  −
+                </button>
+                <span className="w-6 text-center text-[10px] text-text-secondary">
+                  {selectedPlacedItem.scale.toFixed(1)}
+                </span>
                 <button
                   onClick={() => adjustSelectedScale(0.1)}
                   disabled={selectedPlacedItem.scale >= 2.0}
                   className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-                >+</button>
+                >
+                  +
+                </button>
               </div>
               <button
                 onClick={deleteSelectedItem}
-                className="p-1 rounded transition-colors text-red-400 hover:bg-red-500/20"
+                className="p-1 text-red-400 rounded transition-colors hover:bg-red-500/20"
                 title="삭제"
               >
                 <Trash2 size={14} />
@@ -475,15 +517,12 @@ export function Village() {
 
       {/* 타일 설치 모드 표시 바 */}
       {editMode === 'add' && !selectedPlacedItem && (
-        <div className="mb-3 rounded-lg p-2 border border-green-500/20 bg-green-500/10">
+        <div className="p-2 mb-3 rounded-lg border border-green-500/20 bg-green-500/10">
           <div className="flex justify-between items-center">
             <div className="flex gap-2 items-center">
               <Pencil size={14} className="text-green-400" />
               {selectedBuilding && (
-                <BuildingImage
-                  building={selectedBuilding}
-                  className="w-6 h-6"
-                />
+                <BuildingImage building={selectedBuilding} className="w-6 h-6" />
               )}
               <span className="text-sm text-green-400">{selectedBuilding?.name} 설치 모드</span>
               {selectedBuilding && (
@@ -495,9 +534,9 @@ export function Village() {
             <div className="flex gap-1 items-center">
               <button
                 onClick={toggleFlipX}
-                className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
+                className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
                   currentFlipX
-                    ? 'bg-green-500/20 text-green-400'
+                    ? 'text-green-400 bg-green-500/20'
                     : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
                 }`}
                 title="좌우 반전"
@@ -506,27 +545,33 @@ export function Village() {
               </button>
               <button
                 onClick={toggleFlipY}
-                className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
+                className={`flex items-center gap-1 rounded px-2 py-1 text-xs transition-colors ${
                   currentFlipY
-                    ? 'bg-green-500/20 text-green-400'
+                    ? 'text-green-400 bg-green-500/20'
                     : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
                 }`}
                 title="상하 반전"
               >
                 <FlipVertical2 size={12} />
               </button>
-              <div className="flex gap-0.5 items-center px-1 py-0.5 rounded bg-surface-hover">
+              <div className="flex items-center gap-0.5 rounded bg-surface-hover px-1 py-0.5">
                 <button
                   onClick={() => adjustScale(-0.1)}
                   disabled={currentScale <= 0.5}
                   className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-                >−</button>
-                <span className="text-[10px] text-text-secondary w-6 text-center">{currentScale.toFixed(1)}</span>
+                >
+                  −
+                </button>
+                <span className="w-6 text-center text-[10px] text-text-secondary">
+                  {currentScale.toFixed(1)}
+                </span>
                 <button
                   onClick={() => adjustScale(0.1)}
                   disabled={currentScale >= 2.0}
                   className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-                >+</button>
+                >
+                  +
+                </button>
               </div>
               <button
                 onClick={cancelMode}
@@ -640,10 +685,7 @@ export function Village() {
                     } `}
                     title={building.description}
                   >
-                    <BuildingImage
-                      building={building}
-                      className="w-8 h-8"
-                    />
+                    <BuildingImage building={building} className="w-8 h-8" />
                     <span className="w-full truncate text-center text-[10px] text-text-secondary">
                       {building.name}
                     </span>
@@ -677,8 +719,10 @@ export function Village() {
           {/* 레이어 탭 */}
           <div className="flex gap-1 mb-3">
             {LAYER_TABS.map((tab) => {
-              const totalRemaining = getBuildingsByLayer(tab.id)
-                .reduce((sum, b) => sum + Math.max(0, getRemainingQuantity(b.id)), 0)
+              const totalRemaining = getBuildingsByLayer(tab.id).reduce(
+                (sum, b) => sum + Math.max(0, getRemainingQuantity(b.id)),
+                0
+              )
               return (
                 <button
                   key={tab.id}
@@ -716,21 +760,20 @@ export function Village() {
                       disabled={remaining <= 0}
                       className={`flex flex-col items-center gap-1 rounded-lg p-2 transition-colors ${
                         isSelected
-                          ? 'border-2 ring-2 border-green-500/50 bg-green-500/20 ring-green-500/30'
+                          ? 'border-2 border-green-500/50 bg-green-500/20 ring-2 ring-green-500/30'
                           : remaining > 0
                             ? 'border border-transparent bg-surface-hover hover:border-cool/30 hover:bg-cool/20'
-                            : 'opacity-40 cursor-not-allowed bg-surface/30'
+                            : 'cursor-not-allowed bg-surface/30 opacity-40'
                       } `}
                       title={building.description}
                     >
-                      <BuildingImage
-                        building={building}
-                        className="w-8 h-8"
-                      />
+                      <BuildingImage building={building} className="w-8 h-8" />
                       <span className="w-full truncate text-center text-[10px] text-text-secondary">
                         {building.name}
                       </span>
-                      <span className={`text-[10px] ${remaining > 0 ? 'text-cool' : 'text-text-muted'}`}>
+                      <span
+                        className={`text-[10px] ${remaining > 0 ? 'text-cool' : 'text-text-muted'}`}
+                      >
                         {remaining}/{owned}
                       </span>
                       {isSelected && <span className="text-[10px] text-green-400">선택됨</span>}
@@ -739,7 +782,8 @@ export function Village() {
                 })}
             </div>
 
-            {getBuildingsByLayer(activeLayer).filter((b) => getOwnedQuantity(b.id) > 0).length === 0 && (
+            {getBuildingsByLayer(activeLayer).filter((b) => getOwnedQuantity(b.id) > 0).length ===
+              0 && (
               <p className="py-4 text-xs text-center text-text-muted">
                 이 카테고리에 보유한 아이템이 없어요
               </p>
@@ -767,19 +811,23 @@ export function Village() {
               <h3 className="text-sm font-semibold text-gray-800">{purchaseTarget.name}</h3>
               <p className="text-xs text-gray-500">{purchaseTarget.description}</p>
 
-              <div className="w-full p-2 rounded-lg bg-gray-50">
+              <div className="p-2 w-full bg-gray-50 rounded-lg">
                 <div className="flex justify-between text-xs">
                   <span className="text-gray-500">가격</span>
                   <span className="font-medium text-yellow-600">{purchaseTarget.cost} 💰</span>
                 </div>
-                <div className="flex justify-between text-xs mt-1">
+                <div className="flex justify-between mt-1 text-xs">
                   <span className="text-gray-500">지급 수량</span>
-                  <span className="font-medium text-gray-700">×{getDefaultQuantity(purchaseTarget.layer)}</span>
+                  <span className="font-medium text-gray-700">
+                    ×{getDefaultQuantity(purchaseTarget.layer)}
+                  </span>
                 </div>
                 {getOwnedQuantity(purchaseTarget.id) > 0 && (
-                  <div className="flex justify-between text-xs mt-1">
+                  <div className="flex justify-between mt-1 text-xs">
                     <span className="text-gray-500">현재 보유</span>
-                    <span className="font-medium text-green-600">{getOwnedQuantity(purchaseTarget.id)}개</span>
+                    <span className="font-medium text-green-600">
+                      {getOwnedQuantity(purchaseTarget.id)}개
+                    </span>
                   </div>
                 )}
               </div>
