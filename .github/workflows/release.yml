@@ -1,0 +1,95 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-mac:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build:mac
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac-builds
+          path: |
+            release/*.dmg
+            release/*.zip
+          retention-days: 1
+
+  build-win:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run build:win
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-builds
+          path: |
+            release/*.exe
+          retention-days: 1
+
+  release:
+    needs: [build-mac, build-win]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> $GITHUB_OUTPUT
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          body: |
+            ## 설치 방법
+
+            ### macOS
+            1. `Lofi Village-${{ steps.version.outputs.version }}-arm64.dmg` (Apple Silicon) 또는 `Lofi Village-${{ steps.version.outputs.version }}.dmg` (Intel) 다운로드
+            2. DMG 파일 열기 → `Lofi Village.app`을 Applications 폴더로 드래그
+            3. 처음 실행 시 보안 경고가 나타나면:
+               - `시스템 설정` → `개인정보 보호 및 보안` → `확인 없이 열기` 클릭
+               - 또는 터미널에서: `xattr -cr "/Applications/Lofi Village.app"`
+
+            ### Windows
+            1. `Lofi Village Setup ${{ steps.version.outputs.version }}.exe` 다운로드
+            2. 설치 파일 실행
+            3. "Windows의 PC 보호" 경고 시: `추가 정보` → `실행` 클릭
+
+            > ⚠️ **참고**: 현재 앱은 코드 서명이 되어있지 않아 OS에서 보안 경고가 나타날 수 있습니다. 오픈소스 프로젝트로, 소스 코드를 직접 확인하실 수 있습니다.
+
+            ---
+          files: |
+            artifacts/mac-builds/*
+            artifacts/win-builds/*
