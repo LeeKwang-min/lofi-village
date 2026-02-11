@@ -112,6 +112,12 @@
     }
   }
 
+  /* 스프라이트 시트 애니메이션 (CSS 변수로 프레임 수 동적 적용) */
+  @keyframes spriteAnimate {
+    from { background-position-x: 0%; }
+    to { background-position-x: var(--sprite-offset); }
+  }
+
   /* 펄스 애니메이션 (타이머용) */
   .pulse-warm {
     animation: pulseWarm 2s ease-in-out infinite;

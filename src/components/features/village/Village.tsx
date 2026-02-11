@@ -1,5 +1,5 @@
-import { useState, useRef } from 'react'
-import { Coins, Store, Pencil, Trash2, X, Package, FlipHorizontal2, FlipVertical2, Check } from 'lucide-react'
+import { useState, useRef, useCallback } from 'react'
+import { Coins, Store, Pencil, Trash2, X, Package, FlipHorizontal2, FlipVertical2, RotateCcw } from 'lucide-react'
 import { useVillageContext } from '@/contexts/VillageContext'
 import { Building, LayerType, getBuildingsByLayer, PlacedItem } from '@/hooks/useVillage'
 import { getDefaultQuantity } from '@/config/villageAssets'
@@ -7,15 +7,64 @@ import { getDefaultQuantity } from '@/config/villageAssets'
 const GRID_COLS = 5
 const GRID_ROWS = 5
 
-type EditMode = 'none' | 'add' | 'remove'
+// 자유 배치 좌표 제한 (에셋이 맵 밖으로 밀려나지 않도록)
+const PLACE_MIN_X = 8
+const PLACE_MAX_X = 92
+const PLACE_MIN_Y = 15
+const PLACE_MAX_Y = 95
+
+function clampPosition(x: number, y: number) {
+  return {
+    x: Math.max(PLACE_MIN_X, Math.min(PLACE_MAX_X, x)),
+    y: Math.max(PLACE_MIN_Y, Math.min(PLACE_MAX_Y, y)),
+  }
+}
+
+type EditMode = 'none' | 'add'
 type PanelMode = 'none' | 'shop' | 'inventory'
 
-interface PreviewState {
-  x: number
-  y: number
-  flipX: boolean
-  flipY: boolean
-  scale: number
+// 스프라이트 이미지 지원 컴포넌트: spriteFrames가 있으면 CSS background 기반 렌더링
+function BuildingImage({
+  building,
+  animated = false,
+  className = '',
+  style,
+}: {
+  building: Building
+  animated?: boolean
+  className?: string
+  style?: React.CSSProperties
+}) {
+  const frames = building.spriteFrames
+
+  if (frames && frames > 1) {
+    return (
+      <div
+        className={className}
+        style={{
+          ...style,
+          backgroundImage: `url(${building.imagePath})`,
+          backgroundSize: `${frames * 100}% 100%`,
+          backgroundPosition: '0 0',
+          backgroundRepeat: 'no-repeat',
+          ...(animated ? {
+            '--sprite-offset': `${(frames * 100) / (frames - 1)}%`,
+            animation: `spriteAnimate ${frames * 400}ms steps(${frames}) infinite`,
+          } as React.CSSProperties : {}),
+        }}
+      />
+    )
+  }
+
+  return (
+    <img
+      src={building.imagePath}
+      alt={building.name}
+      draggable={false}
+      className={className}
+      style={style}
+    />
+  )
 }
 
 const LAYER_TABS: { id: LayerType; name: string; icon: string }[] = [
@@ -42,7 +91,7 @@ export function Village() {
     purchaseBuilding,
     placeBuilding,
     removeItem,
-    removeTileAt,
+    updateItem,
     clearAllItems,
     getItemsAt,
     getOwnedQuantity,
@@ -54,99 +103,126 @@ export function Village() {
   const [panelMode, setPanelMode] = useState<PanelMode>('none')
   const [activeLayer, setActiveLayer] = useState<LayerType>('tile')
   const [editMode, setEditMode] = useState<EditMode>('none')
-  const [isDragging, setIsDragging] = useState(false)
+  const [isTileDragging, setIsTileDragging] = useState(false)
   const [currentFlipX, setCurrentFlipX] = useState(false)
   const [currentFlipY, setCurrentFlipY] = useState(false)
   const [currentScale, setCurrentScale] = useState(1)
-  const [preview, setPreview] = useState<PreviewState | null>(null)
+  const [selectedPlacedItemId, setSelectedPlacedItemId] = useState<string | null>(null)
   const [purchaseTarget, setPurchaseTarget] = useState<Building | null>(null)
+  const wasDraggingRef = useRef(false)
   const mapRef = useRef<HTMLDivElement>(null)
 
   const freePlacedItems = getFreePlacedItems()
 
-  // 그리드 셀에 타일 설치 또는 삭제
+  // 선택된 배치 아이템 정보
+  const selectedPlacedItem = selectedPlacedItemId
+    ? freePlacedItems.find(item => item.id === selectedPlacedItemId) ?? null
+    : null
+
+  // 그리드 셀에 타일 설치
   const handleCellAction = (position: number) => {
     if (editMode === 'add' && selectedBuilding && selectedBuilding.layer === 'tile') {
       placeBuilding(selectedBuilding.id, { position, flipX: currentFlipX, flipY: currentFlipY, scale: currentScale })
-    } else if (editMode === 'remove') {
-      removeTileAt(position)
     }
   }
 
-  // 마우스 다운 - 드래그 시작
+  // 마우스 다운 - 타일 드래그 시작
   const handleCellMouseDown = (e: React.MouseEvent, position: number) => {
     e.preventDefault()
-    if (editMode === 'add' || editMode === 'remove') {
-      setIsDragging(true)
+    if (editMode === 'add') {
+      setIsTileDragging(true)
       handleCellAction(position)
     }
   }
 
-  // 마우스 엔터 - 드래그 중 셀 위를 지나갈 때
+  // 마우스 엔터 - 타일 드래그 중 셀 위를 지나갈 때
   const handleCellMouseEnter = (position: number) => {
-    if (isDragging && (editMode === 'add' || editMode === 'remove')) {
+    if (isTileDragging && editMode === 'add') {
       handleCellAction(position)
     }
   }
 
-  // 마우스 업 - 드래그 종료
+  // 마우스 업 - 타일 드래그 종료
   const handleMouseUp = () => {
-    setIsDragging(false)
+    setIsTileDragging(false)
   }
 
-  // 자유 배치 영역 클릭 → 미리보기 생성 또는 위치 이동
-  const handleMapClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (editMode !== 'add' || !selectedBuilding || selectedBuilding.layer === 'tile') return
+  // 맵 빈 영역 클릭 → 선택 해제
+  const handleMapClick = () => {
+    if (selectedPlacedItemId) {
+      setSelectedPlacedItemId(null)
+    }
+  }
+
+  // 자유 배치 아이템 클릭 → 선택/해제 토글
+  const handleFreeItemClick = (item: PlacedItem & { building: Building }) => {
+    if (wasDraggingRef.current) {
+      wasDraggingRef.current = false
+      return
+    }
+    setSelectedPlacedItemId(prev => prev === item.id ? null : item.id)
+  }
+
+  // 선택된 아이템 드래그 이동
+  const handleSelectedItemDrag = useCallback((e: React.MouseEvent<HTMLDivElement>, itemId: string) => {
     if (!mapRef.current) return
+    e.preventDefault()
+    e.stopPropagation()
 
     const rect = mapRef.current.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width) * 100
-    const y = ((e.clientY - rect.top) / rect.height) * 100
+    let moved = false
 
-    if (preview) {
-      setPreview({ ...preview, x, y })
-    } else {
-      setPreview({ x, y, flipX: currentFlipX, flipY: currentFlipY, scale: currentScale })
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      moved = true
+      const rawX = ((moveEvent.clientX - rect.left) / rect.width) * 100
+      const rawY = ((moveEvent.clientY - rect.top) / rect.height) * 100
+      const { x, y } = clampPosition(rawX, rawY)
+      updateItem(itemId, { x, y })
     }
-  }
 
-  // 미리보기 확정
-  const confirmPreview = () => {
-    if (!preview || !selectedBuilding) return
-    placeBuilding(selectedBuilding.id, { x: preview.x, y: preview.y, flipX: preview.flipX, flipY: preview.flipY, scale: preview.scale })
-    setPreview(null)
-  }
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove)
+      document.removeEventListener('mouseup', onMouseUp)
+      if (moved) {
+        wasDraggingRef.current = true
+      }
+    }
 
-  // 미리보기 취소
-  const cancelPreview = () => {
-    setPreview(null)
-  }
+    document.addEventListener('mousemove', onMouseMove)
+    document.addEventListener('mouseup', onMouseUp)
+  }, [updateItem])
 
-  // 좌우 반전 토글
+  // 좌우 반전 토글 (타일 전용)
   const toggleFlipX = () => {
-    const next = !currentFlipX
-    setCurrentFlipX(next)
-    if (preview) {
-      setPreview({ ...preview, flipX: next })
-    }
+    setCurrentFlipX(prev => !prev)
   }
 
-  // 상하 반전 토글
+  // 상하 반전 토글 (타일 전용)
   const toggleFlipY = () => {
-    const next = !currentFlipY
-    setCurrentFlipY(next)
-    if (preview) {
-      setPreview({ ...preview, flipY: next })
-    }
+    setCurrentFlipY(prev => !prev)
   }
 
-  // 크기 조절
+  // 크기 조절 (타일 전용)
   const adjustScale = (delta: number) => {
-    const next = Math.round(Math.max(0.5, Math.min(2.0, currentScale + delta)) * 10) / 10
-    setCurrentScale(next)
-    if (preview) {
-      setPreview({ ...preview, scale: next })
-    }
+    setCurrentScale(prev => Math.round(Math.max(0.5, Math.min(2.0, prev + delta)) * 10) / 10)
+  }
+
+  // 선택된 아이템 반전 토글
+  const toggleSelectedFlipX = () => {
+    if (!selectedPlacedItem) return
+    updateItem(selectedPlacedItem.id, { flipX: !selectedPlacedItem.flipX })
+  }
+
+  const toggleSelectedFlipY = () => {
+    if (!selectedPlacedItem) return
+    updateItem(selectedPlacedItem.id, { flipY: !selectedPlacedItem.flipY })
+  }
+
+  // 선택된 아이템 크기 조절
+  const adjustSelectedScale = (delta: number) => {
+    if (!selectedPlacedItem) return
+    const next = Math.round(Math.max(0.5, Math.min(2.0, selectedPlacedItem.scale + delta)) * 10) / 10
+    updateItem(selectedPlacedItem.id, { scale: next })
   }
 
   // 구매 확인 팝업 열기
@@ -162,21 +238,29 @@ export function Village() {
     setPurchaseTarget(null)
   }
 
-  // 인벤토리에서 아이템 선택 (설치 모드 진입)
+  // 인벤토리에서 아이템 선택
   const handleSelectFromInventory = (building: Building) => {
-    setSelectedBuilding(building)
-    setEditMode('add')
-    setCurrentFlipX(false)
-    setCurrentFlipY(false)
-    setCurrentScale(1)
-    setPreview(null)
+    if (building.layer === 'tile') {
+      // 타일: 기존 설치 모드
+      setSelectedBuilding(building)
+      setEditMode('add')
+      setCurrentFlipX(false)
+      setCurrentFlipY(false)
+      setCurrentScale(1)
+    } else {
+      // 비타일: 즉시 배치 + 자동 선택
+      const defaultScale = building.layer === 'unit' ? 1.5 : 1
+      const newId = placeBuilding(building.id, { x: 50, y: 50, flipX: false, flipY: false, scale: defaultScale })
+      if (newId) {
+        setSelectedPlacedItemId(newId)
+      }
+    }
   }
 
-  // 모드 취소
+  // 타일 설치 모드 취소
   const cancelMode = () => {
     setEditMode('none')
     setSelectedBuilding(null)
-    setPreview(null)
     setCurrentFlipX(false)
     setCurrentFlipY(false)
     setCurrentScale(1)
@@ -194,18 +278,18 @@ export function Village() {
     }
   }
 
-  // 삭제 모드 시작
-  const startRemoveMode = () => {
-    setEditMode('remove')
-    setSelectedBuilding(null)
-    setPreview(null)
-    setPanelMode('none')
+  // 선택된 아이템 삭제
+  const deleteSelectedItem = () => {
+    if (!selectedPlacedItemId) return
+    removeItem(selectedPlacedItemId)
+    setSelectedPlacedItemId(null)
   }
 
-  // 자유 배치 아이템 삭제
-  const handleFreeItemClick = (item: PlacedItem & { building: Building }) => {
-    if (editMode === 'remove') {
-      removeItem(item.id)
+  // 초기화 (confirm 포함)
+  const handleReset = () => {
+    if (window.confirm('마을의 모든 배치된 아이템을 삭제하시겠습니까?')) {
+      clearAllItems()
+      setSelectedPlacedItemId(null)
     }
   }
 
@@ -217,29 +301,6 @@ export function Village() {
       case 'unit': return '10%'
       default: return '12%'
     }
-  }
-
-  // 미리보기 드래그
-  const handlePreviewDrag = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!preview || !mapRef.current) return
-    e.preventDefault()
-    e.stopPropagation()
-
-    const rect = mapRef.current.getBoundingClientRect()
-
-    const onMouseMove = (moveEvent: MouseEvent) => {
-      const x = Math.max(0, Math.min(100, ((moveEvent.clientX - rect.left) / rect.width) * 100))
-      const y = Math.max(0, Math.min(100, ((moveEvent.clientY - rect.top) / rect.height) * 100))
-      setPreview(prev => prev ? { ...prev, x, y } : null)
-    }
-
-    const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove)
-      document.removeEventListener('mouseup', onMouseUp)
-    }
-
-    document.addEventListener('mousemove', onMouseMove)
-    document.addEventListener('mouseup', onMouseUp)
   }
 
   return (
@@ -262,7 +323,7 @@ export function Village() {
       {/* 마을 맵 컨테이너 */}
       <div
         ref={mapRef}
-        className="relative mb-3 rounded-lg border border-surface-hover bg-background/50 select-none"
+        className="relative mb-3 rounded-lg border border-surface-hover bg-background/50 select-none overflow-hidden"
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
@@ -270,7 +331,7 @@ export function Village() {
         <div
           className="grid relative p-2"
           style={{ gridTemplateColumns: `repeat(${GRID_COLS}, 1fr)`, gap: 0 }}
-          onClick={(e) => handleMapClick(e)}
+          onClick={handleMapClick}
         >
           {Array.from({ length: GRID_COLS * GRID_ROWS }).map((_, index) => {
             const items = getItemsAt(index)
@@ -282,7 +343,7 @@ export function Village() {
                 onMouseDown={(e) => handleCellMouseDown(e, index)}
                 onMouseEnter={() => handleCellMouseEnter(index)}
                 onDragStart={(e) => e.preventDefault()}
-                className={`relative aspect-square transition-all duration-150 ${editMode === 'add' && selectedBuilding?.layer === 'tile' ? 'cursor-copy hover:brightness-125' : ''} ${editMode === 'remove' ? 'cursor-pointer hover:brightness-75' : ''} ${editMode === 'none' ? 'cursor-default' : ''} `}
+                className={`relative aspect-square transition-all duration-150 ${editMode === 'add' && selectedBuilding?.layer === 'tile' ? 'cursor-copy hover:brightness-125' : 'cursor-default'} `}
                 style={{
                   backgroundColor: '#c8d5b9',
                   zIndex: row
@@ -290,20 +351,12 @@ export function Village() {
               >
                 {/* 타일 렌더링 */}
                 {items.tile && (
-                  <img
-                    src={items.tile.imagePath}
-                    alt={items.tile.name}
-                    draggable={false}
-                    className="object-cover absolute inset-0 w-full h-full"
+                  <BuildingImage
+                    building={items.tile}
+                    animated={!!items.tile.spriteFrames}
+                    className="absolute inset-0 w-full h-full"
                     style={{ zIndex: 0 }}
                   />
-                )}
-
-                {/* 삭제 모드 시 타일이 있으면 표시 */}
-                {editMode === 'remove' && items.tile && (
-                  <div className="flex absolute inset-0 z-10 justify-center items-center bg-red-500/30">
-                    <Trash2 size={12} className="text-red-400" />
-                  </div>
                 )}
               </button>
             )
@@ -312,193 +365,167 @@ export function Village() {
 
         {/* 자유 배치 오버레이 */}
         <div className="absolute inset-0 pointer-events-none" style={{ zIndex: 10 }}>
-          {freePlacedItems.map((item) => (
-            <div
-              key={item.id}
-              className={`absolute pointer-events-auto ${editMode === 'remove' ? 'cursor-pointer hover:ring-2 hover:ring-red-400 rounded' : ''}`}
-              style={{
-                left: `${item.x}%`,
-                top: `${item.y}%`,
-                transform: itemTransform(item.flipX, item.flipY, item.scale, 'translate(-50%, -100%)'),
-                width: getFreeItemSize(item.layer),
-                zIndex: Math.floor((item.y ?? 0) / 10) + 10,
-              }}
-              onClick={() => handleFreeItemClick(item)}
-            >
-              <img
-                src={item.building.imagePath}
-                alt={item.building.name}
-                draggable={false}
-                className="object-contain w-full h-full"
-              />
-              {editMode === 'remove' && (
-                <div className="flex absolute inset-0 justify-center items-center bg-red-500/30 rounded">
-                  <Trash2 size={12} className="text-red-400" />
-                </div>
-              )}
-            </div>
-          ))}
-
-          {/* 미리보기 (드래그 가능) */}
-          {preview && selectedBuilding && (
-            <div
-              className="absolute pointer-events-auto cursor-grab active:cursor-grabbing"
-              style={{
-                left: `${preview.x}%`,
-                top: `${preview.y}%`,
-                transform: itemTransform(preview.flipX, preview.flipY, preview.scale, 'translate(-50%, -100%)'),
-                width: getFreeItemSize(selectedBuilding.layer),
-                zIndex: 100,
-                opacity: 0.7,
-              }}
-              onMouseDown={handlePreviewDrag}
-            >
-              <img
-                src={selectedBuilding.imagePath}
-                alt={selectedBuilding.name}
-                draggable={false}
-                className="object-contain w-full h-full"
-              />
-              <div className="absolute inset-0 border-2 border-green-400 border-dashed rounded animate-pulse" />
-            </div>
-          )}
+          {freePlacedItems.map((item) => {
+            const isSelected = selectedPlacedItemId === item.id
+            const clamped = clampPosition(item.x ?? 50, item.y ?? 50)
+            return (
+              <div
+                key={item.id}
+                className="absolute pointer-events-auto cursor-pointer"
+                style={{
+                  left: `${clamped.x}%`,
+                  top: `${clamped.y}%`,
+                  transform: itemTransform(item.flipX, item.flipY, item.scale, 'translate(-50%, -100%)'),
+                  width: getFreeItemSize(item.layer),
+                  zIndex: isSelected ? 100 : Math.floor(clamped.y / 10) + 10,
+                }}
+                onClick={(e) => {
+                  e.stopPropagation()
+                  handleFreeItemClick(item)
+                }}
+                onMouseDown={(e) => {
+                  if (isSelected) {
+                    handleSelectedItemDrag(e, item.id)
+                  }
+                }}
+              >
+                <img
+                  src={item.building.imagePath}
+                  alt={item.building.name}
+                  draggable={false}
+                  className="object-contain w-full h-full"
+                />
+                {/* 선택 인디케이터 */}
+                {isSelected && (
+                  <div className="absolute -inset-1 border-2 border-sky-400 border-dashed rounded pointer-events-none" style={{ boxShadow: '0 0 8px rgba(56, 189, 248, 0.4)' }} />
+                )}
+              </div>
+            )
+          })}
         </div>
       </div>
 
-      {/* 미리보기 확인/취소/반전/크기 바 */}
-      {preview && selectedBuilding && (
-        <div className="flex flex-wrap gap-2 justify-center items-center p-2 mb-3 rounded-lg border border-green-500/20 bg-green-500/10">
-          <button
-            onClick={toggleFlipX}
-            className={`flex gap-1 items-center px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              preview.flipX
-                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
-            }`}
-          >
-            <FlipHorizontal2 size={12} />
-            좌우
-          </button>
-          <button
-            onClick={toggleFlipY}
-            className={`flex gap-1 items-center px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-              preview.flipY
-                ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
-            }`}
-          >
-            <FlipVertical2 size={12} />
-            상하
-          </button>
-          <div className="flex gap-1 items-center px-2 py-1 rounded-md bg-surface-hover">
-            <button
-              onClick={() => adjustScale(-0.1)}
-              disabled={currentScale <= 0.5}
-              className="px-1.5 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-            >
-              −
-            </button>
-            <span className="text-xs font-medium text-text-secondary w-8 text-center">{currentScale.toFixed(1)}x</span>
-            <button
-              onClick={() => adjustScale(0.1)}
-              disabled={currentScale >= 2.0}
-              className="px-1.5 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-            >
-              +
-            </button>
+      {/* 선택된 아이템 모드바 */}
+      {selectedPlacedItem && (
+        <div className="mb-3 rounded-lg p-2 border border-sky-500/20 bg-sky-500/10">
+          <div className="flex justify-between items-center">
+            <div className="flex gap-2 items-center">
+              <BuildingImage
+                building={selectedPlacedItem.building}
+                className="w-6 h-6"
+              />
+              <span className="text-sm text-sky-400">{selectedPlacedItem.building.name}</span>
+            </div>
+            <div className="flex gap-1 items-center">
+              <button
+                onClick={toggleSelectedFlipX}
+                className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
+                  selectedPlacedItem.flipX
+                    ? 'bg-sky-500/20 text-sky-400'
+                    : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
+                }`}
+                title="좌우 반전"
+              >
+                <FlipHorizontal2 size={12} />
+              </button>
+              <button
+                onClick={toggleSelectedFlipY}
+                className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
+                  selectedPlacedItem.flipY
+                    ? 'bg-sky-500/20 text-sky-400'
+                    : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
+                }`}
+                title="상하 반전"
+              >
+                <FlipVertical2 size={12} />
+              </button>
+              <div className="flex gap-0.5 items-center px-1 py-0.5 rounded bg-surface-hover">
+                <button
+                  onClick={() => adjustSelectedScale(-0.1)}
+                  disabled={selectedPlacedItem.scale <= 0.5}
+                  className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
+                >−</button>
+                <span className="text-[10px] text-text-secondary w-6 text-center">{selectedPlacedItem.scale.toFixed(1)}</span>
+                <button
+                  onClick={() => adjustSelectedScale(0.1)}
+                  disabled={selectedPlacedItem.scale >= 2.0}
+                  className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
+                >+</button>
+              </div>
+              <button
+                onClick={deleteSelectedItem}
+                className="p-1 rounded transition-colors text-red-400 hover:bg-red-500/20"
+                title="삭제"
+              >
+                <Trash2 size={14} />
+              </button>
+              <button
+                onClick={() => setSelectedPlacedItemId(null)}
+                className="p-1 rounded transition-colors text-text-muted hover:bg-surface-hover hover:text-text-primary"
+                title="선택 해제"
+              >
+                <X size={16} />
+              </button>
+            </div>
           </div>
-          <button
-            onClick={confirmPreview}
-            className="flex gap-1 items-center px-3 py-1.5 text-xs font-medium text-white bg-green-500 rounded-md transition-colors hover:bg-green-600"
-          >
-            <Check size={12} />
-            확인
-          </button>
-          <button
-            onClick={cancelPreview}
-            className="flex gap-1 items-center px-3 py-1.5 text-xs font-medium text-red-400 rounded-md transition-colors bg-red-500/10 hover:bg-red-500/20"
-          >
-            <X size={12} />
-            취소
-          </button>
         </div>
       )}
 
-      {/* 모드 표시 바 */}
-      {editMode !== 'none' && !preview && (
-        <div
-          className={`mb-3 rounded-lg p-2 ${
-            editMode === 'add'
-              ? 'border border-green-500/20 bg-green-500/10'
-              : 'border border-red-500/20 bg-red-500/10'
-          }`}
-        >
+      {/* 타일 설치 모드 표시 바 */}
+      {editMode === 'add' && !selectedPlacedItem && (
+        <div className="mb-3 rounded-lg p-2 border border-green-500/20 bg-green-500/10">
           <div className="flex justify-between items-center">
             <div className="flex gap-2 items-center">
-              {editMode === 'add' ? (
-                <>
-                  <Pencil size={14} className="text-green-400" />
-                  <img
-                    src={selectedBuilding?.imagePath}
-                    alt=""
-                    className="object-contain w-6 h-6"
-                  />
-                  <span className="text-sm text-green-400">{selectedBuilding?.name} 설치 모드</span>
-                  {selectedBuilding && (
-                    <span className="text-xs text-green-300">
-                      (남은 수량: {getRemainingQuantity(selectedBuilding.id)})
-                    </span>
-                  )}
-                </>
-              ) : (
-                <>
-                  <Trash2 size={14} className="text-red-400" />
-                  <span className="text-sm text-red-400">삭제 모드</span>
-                  <span className="text-xs text-red-300 ml-1">타일/아이템을 클릭하여 삭제</span>
-                </>
+              <Pencil size={14} className="text-green-400" />
+              {selectedBuilding && (
+                <BuildingImage
+                  building={selectedBuilding}
+                  className="w-6 h-6"
+                />
+              )}
+              <span className="text-sm text-green-400">{selectedBuilding?.name} 설치 모드</span>
+              {selectedBuilding && (
+                <span className="text-xs text-green-300">
+                  (남은 수량: {getRemainingQuantity(selectedBuilding.id)})
+                </span>
               )}
             </div>
             <div className="flex gap-1 items-center">
-              {/* 설치 모드일 때 반전/크기 버튼 */}
-              {editMode === 'add' && (
-                <>
-                  <button
-                    onClick={toggleFlipX}
-                    className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
-                      currentFlipX
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
-                    }`}
-                    title="좌우 반전"
-                  >
-                    <FlipHorizontal2 size={12} />
-                  </button>
-                  <button
-                    onClick={toggleFlipY}
-                    className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
-                      currentFlipY
-                        ? 'bg-green-500/20 text-green-400'
-                        : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
-                    }`}
-                    title="상하 반전"
-                  >
-                    <FlipVertical2 size={12} />
-                  </button>
-                  <div className="flex gap-0.5 items-center px-1 py-0.5 rounded bg-surface-hover">
-                    <button
-                      onClick={() => adjustScale(-0.1)}
-                      disabled={currentScale <= 0.5}
-                      className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-                    >−</button>
-                    <span className="text-[10px] text-text-secondary w-6 text-center">{currentScale.toFixed(1)}</span>
-                    <button
-                      onClick={() => adjustScale(0.1)}
-                      disabled={currentScale >= 2.0}
-                      className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
-                    >+</button>
-                  </div>
-                </>
-              )}
+              <button
+                onClick={toggleFlipX}
+                className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
+                  currentFlipX
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
+                }`}
+                title="좌우 반전"
+              >
+                <FlipHorizontal2 size={12} />
+              </button>
+              <button
+                onClick={toggleFlipY}
+                className={`flex gap-1 items-center px-2 py-1 text-xs rounded transition-colors ${
+                  currentFlipY
+                    ? 'bg-green-500/20 text-green-400'
+                    : 'bg-surface-hover text-text-secondary hover:bg-surface-hover/80'
+                }`}
+                title="상하 반전"
+              >
+                <FlipVertical2 size={12} />
+              </button>
+              <div className="flex gap-0.5 items-center px-1 py-0.5 rounded bg-surface-hover">
+                <button
+                  onClick={() => adjustScale(-0.1)}
+                  disabled={currentScale <= 0.5}
+                  className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
+                >−</button>
+                <span className="text-[10px] text-text-secondary w-6 text-center">{currentScale.toFixed(1)}</span>
+                <button
+                  onClick={() => adjustScale(0.1)}
+                  disabled={currentScale >= 2.0}
+                  className="px-1 text-xs font-bold text-text-secondary hover:text-text-primary disabled:opacity-30"
+                >+</button>
+              </div>
               <button
                 onClick={cancelMode}
                 className="p-1 rounded transition-colors text-text-muted hover:bg-surface-hover hover:text-text-primary"
@@ -507,23 +534,11 @@ export function Village() {
               </button>
             </div>
           </div>
-          {/* 삭제 모드: 초기화 버튼만 */}
-          {editMode === 'remove' && (
-            <div className="flex gap-2 pt-2 mt-2 border-t border-red-300">
-              <button
-                onClick={() => clearAllItems()}
-                className="flex flex-1 items-center justify-center gap-1 rounded-md bg-red-500 px-2 py-1.5 text-xs font-medium text-white transition-colors hover:bg-red-600"
-              >
-                <Trash2 size={12} />
-                마을 초기화
-              </button>
-            </div>
-          )}
         </div>
       )}
 
       {/* 모드 버튼들 */}
-      {editMode === 'none' && (
+      {editMode === 'none' && !selectedPlacedItem && (
         <div className="flex gap-2 mb-3">
           <button
             onClick={() => setPanelMode(panelMode === 'shop' ? 'none' : 'shop')}
@@ -548,11 +563,11 @@ export function Village() {
             <span className="text-sm font-medium">인벤토리</span>
           </button>
           <button
-            onClick={startRemoveMode}
+            onClick={handleReset}
             className="flex gap-2 justify-center items-center p-2 px-4 text-red-400 rounded-lg transition-colors bg-red-500/10 hover:bg-red-500/20"
           >
-            <Trash2 size={16} />
-            <span className="text-sm font-medium">삭제</span>
+            <RotateCcw size={16} />
+            <span className="text-sm font-medium">초기화</span>
           </button>
         </div>
       )}
@@ -623,10 +638,9 @@ export function Village() {
                     } `}
                     title={building.description}
                   >
-                    <img
-                      src={building.imagePath}
-                      alt={building.name}
-                      className="object-contain w-8 h-8"
+                    <BuildingImage
+                      building={building}
+                      className="w-8 h-8"
                     />
                     <span className="w-full truncate text-center text-[10px] text-text-secondary">
                       {building.name}
@@ -707,10 +721,9 @@ export function Village() {
                       } `}
                       title={building.description}
                     >
-                      <img
-                        src={building.imagePath}
-                        alt={building.name}
-                        className="object-contain w-8 h-8"
+                      <BuildingImage
+                        building={building}
+                        className="w-8 h-8"
                       />
                       <span className="w-full truncate text-center text-[10px] text-text-secondary">
                         {building.name}
@@ -734,7 +747,7 @@ export function Village() {
           <p className="mt-2 text-center text-[10px] text-text-muted">
             {activeLayer === 'tile'
               ? '🏗️ 아이템을 선택하고 그리드를 클릭/드래그해서 설치하세요'
-              : '🏗️ 아이템을 선택하고 맵을 클릭해서 설치하세요'}
+              : '🏗️ 아이템을 선택하면 맵 중앙에 즉시 배치됩니다'}
           </p>
         </div>
       )}
@@ -744,10 +757,10 @@ export function Village() {
         <div className="flex fixed inset-0 z-50 justify-center items-center bg-black/50">
           <div className="p-4 mx-4 w-full max-w-xs bg-white rounded-xl shadow-xl">
             <div className="flex flex-col gap-3 items-center">
-              <img
-                src={purchaseTarget.imagePath}
-                alt={purchaseTarget.name}
-                className="object-contain w-16 h-16"
+              <BuildingImage
+                building={purchaseTarget}
+                animated={!!purchaseTarget.spriteFrames}
+                className="w-16 h-16"
               />
               <h3 className="text-sm font-semibold text-gray-800">{purchaseTarget.name}</h3>
               <p className="text-xs text-gray-500">{purchaseTarget.description}</p>

@@ -178,27 +178,30 @@ export function useVillage() {
   }, [state.coins])
 
   // 아이템 배치 — 타일: 그리드 방식 / 비타일: x,y 좌표
+  // 반환값: 배치된 아이템 ID (성공) 또는 null (실패)
   const placeBuilding = useCallback((
     buildingId: string,
     options: { position?: number; x?: number; y?: number; flipX?: boolean; flipY?: boolean; scale?: number }
-  ): boolean => {
+  ): string | null => {
     const building = BUILDINGS.find((b) => b.id === buildingId)
-    if (!building) return false
+    if (!building) return null
 
     // 남은 수량 체크
     const owned = state.inventory[buildingId] || 0
     const placed = state.placedItems.filter(item => item.buildingId === buildingId).length
-    if (owned - placed <= 0) return false
+    if (owned - placed <= 0) return null
+
+    const newId = nanoid()
 
     if (building.layer === 'tile') {
       const position = options.position
-      if (position === undefined) return false
+      if (position === undefined) return null
 
       // 같은 레이어+위치에 동일 아이템이 있으면 무시
       const existing = state.placedItems.find(
         item => item.position === position && item.layer === 'tile'
       )
-      if (existing && existing.buildingId === buildingId) return false
+      if (existing && existing.buildingId === buildingId) return null
 
       setState((prev) => ({
         ...prev,
@@ -207,7 +210,7 @@ export function useVillage() {
             item => !(item.position === position && item.layer === 'tile')
           ),
           {
-            id: nanoid(),
+            id: newId,
             buildingId,
             layer: 'tile',
             position,
@@ -219,14 +222,14 @@ export function useVillage() {
       }))
     } else {
       // 자유 배치
-      if (options.x === undefined || options.y === undefined) return false
+      if (options.x === undefined || options.y === undefined) return null
 
       setState((prev) => ({
         ...prev,
         placedItems: [
           ...prev.placedItems,
           {
-            id: nanoid(),
+            id: newId,
             buildingId,
             layer: building.layer,
             x: options.x!,
@@ -239,7 +242,7 @@ export function useVillage() {
       }))
     }
 
-    return true
+    return newId
   }, [state.placedItems, state.inventory])
 
   // 아이템 제거 (ID 기반)
@@ -247,6 +250,19 @@ export function useVillage() {
     setState((prev) => ({
       ...prev,
       placedItems: prev.placedItems.filter(item => item.id !== itemId),
+    }))
+  }, [])
+
+  // 배치된 아이템 부분 업데이트
+  const updateItem = useCallback((
+    itemId: string,
+    updates: Partial<Pick<PlacedItem, 'x' | 'y' | 'flipX' | 'flipY' | 'scale'>>
+  ) => {
+    setState(prev => ({
+      ...prev,
+      placedItems: prev.placedItems.map(item =>
+        item.id === itemId ? { ...item, ...updates } : item
+      ),
     }))
   }, [])
 
@@ -314,6 +330,7 @@ export function useVillage() {
     purchaseBuilding,
     placeBuilding,
     removeItem,
+    updateItem,
     removeTileAt,
     clearAllItems,
     getItemsAt,
