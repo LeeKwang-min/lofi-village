@@ -287,7 +287,7 @@ export function Village() {
       pushUndoSnapshot()
       setEditMode('none')
       setSelectedBuilding(null)
-      const defaultScale = building.layer === 'unit' ? 1.5 : 1
+      const defaultScale = 1.5
       const newId = placeBuilding(building.id, {
         x: 50,
         y: 50,
