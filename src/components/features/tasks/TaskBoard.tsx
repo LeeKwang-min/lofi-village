@@ -112,8 +112,52 @@ export function TaskBoard() {
 
   const activeTask = activeTaskId ? tasks.find((t) => t.id === activeTaskId) : null
 
+  const totalCount = tasks.length
+  const doneCount = tasks.filter((t) => t.status === 'done').length
+  const inProgressCount = tasks.filter((t) => t.status === 'in-progress').length
+  const donePercent = totalCount > 0 ? (doneCount / totalCount) * 100 : 0
+  const inProgressPercent = totalCount > 0 ? (inProgressCount / totalCount) * 100 : 0
+
   return (
     <div className="flex flex-col h-full">
+      {/* 진행률 */}
+      {totalCount > 0 && (
+        <div className="px-3 pt-3 pb-1">
+          <div className="p-3 rounded-xl border border-cool/20 bg-cool/5">
+            <div className="flex justify-between items-center mb-2">
+              <span className="text-sm font-medium text-text-primary">진행률</span>
+              <span className="text-sm font-bold text-cool">
+                {Math.round(donePercent)}%
+              </span>
+            </div>
+            <div className="flex overflow-hidden h-2 rounded-full bg-surface">
+              <div
+                className="h-full transition-all duration-300 bg-cool"
+                style={{ width: `${donePercent}%` }}
+              />
+              <div
+                className="h-full transition-all duration-300 bg-warm"
+                style={{ width: `${inProgressPercent}%` }}
+              />
+            </div>
+            <div className="flex gap-3 mt-2 text-xs text-text-muted">
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-cool" />
+                완료 {doneCount}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-warm" />
+                진행중 {inProgressCount}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="inline-block w-2 h-2 rounded-full bg-surface border border-surface-hover/50" />
+                미완료 {totalCount - doneCount - inProgressCount}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 입력 영역 */}
       <div className="flex gap-2 p-3">
         <input
