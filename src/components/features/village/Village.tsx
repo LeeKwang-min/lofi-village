@@ -20,11 +20,12 @@ import { getDefaultQuantity } from '@/config/villageAssets'
 const GRID_COLS = 5
 const GRID_ROWS = 5
 
-// 자유 배치 좌표 제한 (에셋이 맵 밖으로 밀려나지 않도록)
-const PLACE_MIN_X = 8
-const PLACE_MAX_X = 92
-const PLACE_MIN_Y = 15
-const PLACE_MAX_Y = 95
+// 자유 배치 좌표 제한 (에셋이 맵 밖으로 완전히 밀려나지 않도록 최소한의 마진)
+// transform: translate(-50%, -100%) 기준으로 에셋의 중심-하단이 앵커
+const PLACE_MIN_X = 1
+const PLACE_MAX_X = 99
+const PLACE_MIN_Y = 3
+const PLACE_MAX_Y = 99
 
 function clampPosition(x: number, y: number) {
   return {
