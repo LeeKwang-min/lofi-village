@@ -9,6 +9,7 @@ import { TaskList } from './components/features/tasks'
 import { Village } from './components/features/village'
 import { FocusHistory } from './components/features/history'
 import { QuickActions } from './components/features/quick-actions'
+import { Stopwatch } from './components/features/stopwatch'
 import { Memo } from './components/features/memo'
 import { EventForm, TodayEventList } from './components/features/event'
 import { AlarmList } from './components/features/alarm'
@@ -107,6 +108,9 @@ function FocusTab() {
 
       {/* 일정 큐 */}
       <ScheduleQueue />
+
+      {/* 스톱워치 */}
+      <Stopwatch />
     </>
   )
 }
