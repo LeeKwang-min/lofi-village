@@ -47,7 +47,7 @@ interface SubWindowConfig {
 }
 
 const SUB_WINDOW_CONFIGS: Record<SubWindowType, SubWindowConfig> = {
-  tasks: { title: '오늘의 할 일', width: 400, height: 500 },
+  tasks: { title: '할 일 목록', width: 480, height: 600 },
   history: { title: '집중 기록', width: 450, height: 600 },
   memo: { title: '메모장', width: 400, height: 500 },
   schedule: { title: '일정 추가', width: 400, height: 620 },

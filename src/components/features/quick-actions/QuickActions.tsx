@@ -17,7 +17,7 @@ export function QuickActions() {
   return (
     <section className="p-4 rounded-xl border border-surface-hover/50 bg-surface/50">
       <div className="grid grid-cols-2 gap-3">
-        {/* 오늘의 할 일 버튼 */}
+        {/* 할 일 목록 버튼 */}
         <button
           onClick={handleOpenTasks}
           className="flex flex-col items-center gap-2 rounded-xl border border-cool/20 bg-cool/5 p-4 transition-all hover:scale-[1.02] hover:border-cool/40 hover:bg-cool/10 active:scale-[0.98]"
@@ -26,8 +26,8 @@ export function QuickActions() {
             <ListTodo size={24} className="text-cool" />
           </div>
           <div className="text-center">
-            <p className="text-sm font-medium text-text-primary">오늘의 할 일</p>
-            <p className="text-xs text-text-muted">할 일 목록 열기</p>
+            <p className="text-sm font-medium text-text-primary">할 일 목록</p>
+            <p className="text-xs text-text-muted">칸반 보드 열기</p>
           </div>
         </button>
 
