@@ -18,6 +18,7 @@ import { SoundProvider } from './contexts/SoundContext'
 import { YouTubeProvider } from './contexts/YouTubeContext'
 import { EventProvider } from './contexts/EventContext'
 import { AlarmProvider } from './contexts/AlarmContext'
+import { TaskProvider } from './contexts/TaskContext'
 import { useEventReminder } from './hooks/useEventReminder'
 import { useAlarmReminder } from './hooks/useAlarmReminder'
 
@@ -162,11 +163,13 @@ function MainApp() {
           <ScheduleProvider>
             <EventProvider>
               <AlarmProvider>
-                <ReminderWrapper>
-                  <AppShell>
-                    <TabLayout tabs={tabs} />
-                  </AppShell>
-                </ReminderWrapper>
+                <TaskProvider>
+                  <ReminderWrapper>
+                    <AppShell>
+                      <TabLayout tabs={tabs} />
+                    </AppShell>
+                  </ReminderWrapper>
+                </TaskProvider>
               </AlarmProvider>
             </EventProvider>
           </ScheduleProvider>
@@ -179,9 +182,11 @@ function MainApp() {
 // 할 일 목록 서브 윈도우
 function TasksWindow() {
   return (
-    <SubWindowShell title="오늘의 할 일" emoji="📝">
-      <TaskList isStandalone />
-    </SubWindowShell>
+    <TaskProvider>
+      <SubWindowShell title="할 일 목록" emoji="📋">
+        <TaskList isStandalone />
+      </SubWindowShell>
+    </TaskProvider>
   )
 }
 
