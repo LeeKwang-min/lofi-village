@@ -8,6 +8,7 @@ import {
   ScheduleItemStatus,
   ScheduleEvent,
   ScheduleEventType,
+  ScheduleSource,
   QueueStats,
   calculateBreakMinutes,
   generateId,
@@ -309,6 +310,38 @@ class ScheduleQueueService {
     this.saveToStorage()
     this.emit('queue-cleared')
     this.emit('queue-updated')
+  }
+
+  /**
+   * 이미 완료된 세션을 기록용으로 큐에 추가 (스톱워치 등)
+   */
+  addCompletedSession(options: {
+    title: string
+    emoji?: string
+    durationMinutes: number
+    source?: ScheduleSource
+  }): ScheduleItem {
+    const now = new Date()
+    const item: ScheduleItem = {
+      id: generateId(),
+      type: 'focus',
+      title: options.title,
+      emoji: options.emoji,
+      status: 'completed',
+      source: options.source || 'manual',
+      durationMinutes: options.durationMinutes,
+      autoInsertBreak: false,
+      createdAt: now,
+      startedAt: new Date(now.getTime() - options.durationMinutes * 60 * 1000),
+      completedAt: now,
+    }
+
+    this.queue.push(item)
+    this.saveToStorage()
+    this.emit('item-completed', item)
+    this.emit('queue-updated')
+
+    return item
   }
 
   /**
